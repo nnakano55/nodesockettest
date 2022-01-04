@@ -32,10 +32,22 @@
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         if(input.value){
-          socket.emit('chat message', input.value);
+          if(input.value[0] == '/'){
+            let temp = input.value.split(' ');
+            switch(temp[0]){
+              case '/returnid':socket.emit(temp[0]); break;
+            }
+          } else {
+            socket.emit('chat message', `${input.value}`);  
+          }
+          
           input.value = '';
         }
       });
+
+      socket.on('connect', () => {
+        socket.emit('welcome');
+      })
 
       socket.on('chat message', (msg) => {
         var item = document.createElement('li');
