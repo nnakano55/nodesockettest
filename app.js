@@ -21,7 +21,7 @@ const joinRoom = (socket, room) => {
 const uuid = () => {
 	let id = Math.random().toString(36).substr(2,9);
 	if(rooms[id])
-		uuid();
+		return uuid();
 	return id;
 };
 
