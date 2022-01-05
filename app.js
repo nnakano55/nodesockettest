@@ -1,4 +1,4 @@
-
+// Testing vim 
 const express = require('express');
 const app = express();
 const path = require('path');
@@ -35,6 +35,12 @@ io.on('connection', (socket) => {
 	
 	console.log('a user connected: ', socket.id);
 	
+	socket.on('console', (msg) => {
+		
+		console.log(`${socket.id}: ${msg}`);
+	
+	});	
+	
 	socket.on('createRoom', (name, callback) => {
 		const room = {
 			id: uuid(),
@@ -62,6 +68,7 @@ io.on('connection', (socket) => {
 
 	socket.on('welcome', () => {
 		socket.emit('consoleMessage', `Welcome, ${socket.id}!`);
+		console.log('welcome');
 		//io.emit('chat message', `Welcome, ${socket.id}!`);
 	});
 
