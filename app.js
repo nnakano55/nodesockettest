@@ -20,6 +20,7 @@ const joinRoom = (socket, room) => {
 
 const uuid = () => {
 	let id = Math.random().toString(36).substr(2,9);
+	console.log(id);
 	if(rooms[id])
 		return uuid();
 	return id;
@@ -35,6 +36,16 @@ io.on('connection', (socket) => {
 	
 	console.log('a user connected: ', socket.id);
 	
+	socket.on('getRooms', (callback) => {
+		console.log('rooms called!');
+		let roomList = Object.values(rooms);
+		let tempString = roomList.map(data => {
+			return JSON.stringify({name: data.name, id: data.id, players: data.sockets.length});
+		}).join(', ');
+		console.log(tempString);
+		callback(tempString); 
+	});
+
 	socket.on('console', (msg) => {
 		
 		console.log(`${socket.id}: ${msg}`);
@@ -48,7 +59,7 @@ io.on('connection', (socket) => {
 			sockets: []
 		};
 		rooms[room.id] = room;
-		joinRoom(socket, room);;
+		joinRoom(socket, room);
 		callback({status: `room created: ${room.id}`});
 	});
 
