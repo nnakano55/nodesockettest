@@ -11,6 +11,10 @@ class StateTitle extends Phaser.Scene{
 
     create(){
        
+	socket.emit('createRoom', 'room', (res) => {
+        	socket.emit('console',JSON.stringify(res));
+	});
+
         let t = this.add.text(
             30, 
             config.height / 2, 
@@ -24,9 +28,8 @@ class StateTitle extends Phaser.Scene{
         this.input.on('gameobjectdown', (event, obj) => {
             
             if(obj.name === 'testnamenfjdasfjdkas'){
-                socket.emit('createRoom', 'room', (res) => {
-                    socket.emit('console', res);
-                });
+                
+		this.scene.start('RoomHubScene');
             }
         }, this)
 
@@ -43,6 +46,10 @@ class StateTitle extends Phaser.Scene{
                 objs[0].clearTint();
             }
         });
+
+	this.input.on('keydown', (event) => {
+		socket.emit('console', JSON.stringify(event));
+	});
     }
 
     update(){

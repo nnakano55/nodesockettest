@@ -3,7 +3,7 @@
 var config = {
     type: Phaser.AUTO,
     width: 800,
-    height: 600,
+    height: 400,
     physics: {
         default: 'arcade',
         arcade: {
@@ -11,7 +11,7 @@ var config = {
             debug: false
         }
     },
-    scene: [StateTitle]
+    scene: [StateTitle, RoomHub]
 };
 
 var player;
