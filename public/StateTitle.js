@@ -25,7 +25,7 @@ class StateTitle extends Phaser.Scene{
             
             if(obj.name === 'testnamenfjdasfjdkas'){
                 socket.emit('createRoom', 'room', (res) => {
-                    console.log(res.status);
+                    socket.emit('console', res);
                 });
             }
         }, this)
@@ -33,6 +33,7 @@ class StateTitle extends Phaser.Scene{
         this.input.on('pointerover', (event, objs) => {
             if(objs[0].name === 'testnamenfjdasfjdkas'){
                 objs[0].setTint(0xff0000);
+        	socket.emit('console', 'hovering');
             }
 
         })
