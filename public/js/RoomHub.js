@@ -6,7 +6,14 @@ class RoomHub extends Phaser.Scene {
 	}
 
 	preload(){
-		this.load.html('text',`../assets/html/textinput.html`);
+		this.load.scenePlugin({
+			key: 'rexuiplugin',
+			url: '/frameworks/rexuiplugin.min.js',
+			sceneKey: 'rexUI'
+		});
+	
+		this.load.plugin('rextexteditplugin', '/frameworks/rexuiplugin.min.js', true);
+		//this.load.html('text',`../assets/html/textinput.html`);
 	}
 
 	create(){
@@ -33,7 +40,7 @@ class RoomHub extends Phaser.Scene {
 		
 		text.setInteractive().on('pointerdown', () => {
 			this.rexUI.edit(text);
-		})
+		});
 
 		//let check = document.createElement('div');
 		//check.innerHTML = '<h1>lmao</h1>;

@@ -1,7 +1,5 @@
 // Init phaser and sockets
 
-import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin';
-
 var config = {
     type: Phaser.AUTO,
     parent:'phaser-container',
@@ -15,16 +13,7 @@ var config = {
         }
     },
     dom: {
-	createContainer: true
-    },
-    plugins: {
-	scene: [
-	     {
-		key: 'rexUI',
-		plugin: RexUIPlugin,
-		mapping: 'rexUI'     
-	     }
-	]
+	   createContainer: true
     },
     scene: [StateTitle, RoomHub]
 };
