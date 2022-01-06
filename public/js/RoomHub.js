@@ -6,7 +6,7 @@ class RoomHub extends Phaser.Scene {
 	}
 
 	preload(){
-
+		this.load.html('text',`../assets/html/textinput.html`);
 	}
 
 	create(){
@@ -25,10 +25,22 @@ class RoomHub extends Phaser.Scene {
 		
 		socket.emit('getRooms', (data) => {
 			socket.emit('console', data);
-			//this.add.text(0 ,0, JSON.stringify(data), {fontFamily:'Georgia, Times, serif'});
+			this.add.text(0, 0, data, {fontFamily:'Georgia, Times, serif', fontSize: 16});
 			//socket.emit('console', JSON.stringify(data));	
 		});
-		//this.add.text(0, 0, 'Testing room', {});
+		let text = this.add.text(250, 200, 'Testing room', {fontFamily:'Georgia, Times, serif', fontSize: 16});
+		text.setOrigin(0.5, 0.5);
+		
+		text.setInteractive().on('pointerdown', () => {
+			this.rexUI.edit(text);
+		})
+
+		//let check = document.createElement('div');
+		//check.innerHTML = '<h1>lmao</h1>;
+		//check.style.color = '#FFFFFF'
+
+		//let nameinput = this.add.dom(200, 200).createFromCache('text');
+		//socket.emit('console', JSON.stringify(nameinput));
 	}
 
 	update(){

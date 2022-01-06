@@ -42,7 +42,7 @@ io.on('connection', (socket) => {
 		let tempString = roomList.map(data => {
 			return JSON.stringify({name: data.name, id: data.id, players: data.sockets.length});
 		}).join(', ');
-		console.log(tempString);
+		//console.log(tempString);
 		callback(tempString); 
 	});
 
