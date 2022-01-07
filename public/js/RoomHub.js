@@ -46,12 +46,48 @@ class RoomHub extends Phaser.Scene {
 		//check.innerHTML = '<h1>lmao</h1>;
 		//check.style.color = '#FFFFFF'
 		try{
-		this.nameinput = this.add.dom(500, 200).createFromCache('text');
-		socket.emit('console', JSON.stringify(this.nameinput));
+		/*
+		<div id="input-form">
+			<div id ="menu">Blah blah blah</div>
+			<div id="contents">
+				<div id="createRoom">
+					<input id="textbox" type="text" name="name" placeholder="Full Name" />
+					<input id="submit" type="button" name="name" value="create room" />
+				</div>
+			</div>
+		</div>
+		*/
+		let nameinput = this.add.dom(500, 200).createFromCache('text').getChildByID('contents');
+		
+		//let input = nameinput.getElementById('textbox');
+		let input = nameinput.childNodes[1].childNodes[0];
+		socket.emit('console', input);
+		input.addEventListener('keydown', (event) => {
+			if(event.keyCode == 13 && input.value != ''){
+				socket.emit('console', `ENTER PRESSED: ${input.value}`);
+				socket.emit('createRoom', input.value, (res) => {
+        				socket.emit('console',JSON.stringify(res));
+				});
+				input.value = '';
+			}
+		});
+	
+		let button = nameinput.childNodes[1].childNodes[1];
+		button.addEventListener('click', () => {
+			if(input.value != ''){
+				socket.emit('console', `BUTTON PRESSED: ${input.value}`);
+				socket.emit('createRoom', input.value, (res) => {
+        				socket.emit('console',JSON.stringify(res));
+				});
+				input.value = '';
+			}
+		});
+		/*
+		socket.emit('console', JSON.stringify(nameinput));
 		this.returnKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
 		this.returnKey.on('down', (event) => {
-			let name = this.nameinput.getChildByName('name');
+			let name = nameinput.getChildByID('textbox');
 			socket.emit('console', name.toString());
 			if(name.value != ''){
 				socket.emit('console', name.value);
@@ -60,7 +96,7 @@ class RoomHub extends Phaser.Scene {
 			name.addEventListener('keydown', (e) => {
 				socket.emit('console', `Keycode: ${e.keyCode}`);
 			});
-		});
+		});*/
 
 		/*
 		let input = nameinput.getChildByName('name');

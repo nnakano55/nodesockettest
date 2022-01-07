@@ -11,9 +11,6 @@ class StateTitle extends Phaser.Scene{
 
     create(){
        
-	socket.emit('createRoom', 'room', (res) => {
-        	socket.emit('console',JSON.stringify(res));
-	});
 
         let t = this.add.text(
             30, 

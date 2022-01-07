@@ -6,17 +6,35 @@
 				padding: 15px;
 				background-color: #DDDDDD;
 			}
-			#input-form input{
+			#input-form #textbox{
 				padding: 10px;
 				font-size: 20px;
 				width: 400px;
+			}
+			#input-form #submit{
+				font-size: 20px;
+				width: 200px;
+				padding:10px; 
+				border: none;
+				outline: none;
+				border-radius: 2px;
+				background-color: #AAAAAA;
+			}
+			#input-form #submit:hover{
+				background-color: #EEEEEE;
 			}
 		</style>
 	</head>
 	
 	<body>
 		<div id="input-form">
-			<input id="textbox" type="text" name="name" placeholder="Full Name" />
+			<div id ="menu">Blah blah blah</div>
+			<div id="contents">
+				<div id="createRoom">
+					<input id="textbox" type="text" name="name" placeholder="Full Name" />
+					<input id="submit" type="button" name="name" value="create room" />
+				</div>
+			</div>
 		</div>
 	</body>
 
