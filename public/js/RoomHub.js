@@ -13,7 +13,7 @@ class RoomHub extends Phaser.Scene {
 		});
 	
 		this.load.plugin('rextexteditplugin', '/frameworks/rexuiplugin.min.js', true);
-		//this.load.html('text',`../assets/html/textinput.html`);
+		this.load.html('text',`../assets/html/textinput.html`);
 	}
 
 	create(){
@@ -45,9 +45,65 @@ class RoomHub extends Phaser.Scene {
 		//let check = document.createElement('div');
 		//check.innerHTML = '<h1>lmao</h1>;
 		//check.style.color = '#FFFFFF'
+		try{
+		this.nameinput = this.add.dom(500, 200).createFromCache('text');
+		socket.emit('console', JSON.stringify(this.nameinput));
+		this.returnKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
 
-		//let nameinput = this.add.dom(200, 200).createFromCache('text');
+		this.returnKey.on('down', (event) => {
+			let name = this.nameinput.getChildByName('name');
+			socket.emit('console', name.toString());
+			if(name.value != ''){
+				socket.emit('console', name.value);
+				name.value = '';
+			}
+			name.addEventListener('keydown', (e) => {
+				socket.emit('console', `Keycode: ${e.keyCode}`);
+			});
+		});
+
+		/*
+		let input = nameinput.getChildByName('name');
+     		socket.emit('console', JSON.stringify(input));
+		input.addListener('keydown', (e) => {
+			let code = e.keyCode;
+			socket.emit('console', code);
+			if(code == 13){
+				
+				socket.emit('console', input.value);
+			}
+		});
+		*/
+
+		} catch(error){
+			socket.emit('console', `error: ${error.message}`);
+		}
+
 		//socket.emit('console', JSON.stringify(nameinput));
+		
+		/*
+		let menu = this.rexUI.add.menu({
+			x: 0,
+			y: 0,
+			width: 300,
+			height: 300,
+			orientation: 1,
+			items: [],
+			name: '',
+			
+			createBackgroundCallback: function(items){
+			
+			},
+
+			createButtonCallback: function(item, index, items){
+			
+			},
+
+			easeIn: 0,
+			easeOut: 0
+
+		});
+		*/
 	}
 
 	update(){
