@@ -57,30 +57,11 @@ class RoomHub extends Phaser.Scene {
 			</div>
 		</div>
 		*/
-		let nameinput = this.add.dom(500, 200).createFromCache('text').getChildByID('contents');
-		//let input = nameinput.getElementById('textbox');
-		let input = nameinput.children[0].children[0];
-		console.log(nameinput.children);
-		input.addEventListener('keydown', (event) => {
-			if(event.keyCode == 13 && input.value != ''){
-				socket.emit('console', `ENTER PRESSED: ${input.value}`);
-				socket.emit('createRoom', input.value, (res) => {
-        				socket.emit('console',JSON.stringify(res));
-				});
-				input.value = '';
-			}
-		});
-	
-		let button = nameinput.children[0].children[1];
-		button.addEventListener('click', () => {
-			if(input.value != ''){
-				socket.emit('console', `BUTTON PRESSED: ${input.value}`);
-				socket.emit('createRoom', input.value, (res) => {
-        				socket.emit('console',JSON.stringify(res));
-				});
-				input.value = '';
-			}
-		});
+		let htmlinput = this.add.dom(0, 0).createFromCache('text');
+		htmlinput.setOrigin(0, 0);
+		
+		let html = setRoomHubHTML(htmlinput, this);
+
 		/*
 		socket.emit('console', JSON.stringify(nameinput));
 		this.returnKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
