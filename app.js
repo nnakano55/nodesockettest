@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
 		};
 		rooms[room.id] = room;
 		joinRoom(socket, room);
-		callback({status: `room created: ${room.id}`});
+		callback({status: `room created! id: ${room.id} name: ${name}`});
 	});
 
 	socket.on('joinRoom', (roomId, callback) => {
