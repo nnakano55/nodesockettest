@@ -58,10 +58,9 @@ class RoomHub extends Phaser.Scene {
 		</div>
 		*/
 		let nameinput = this.add.dom(500, 200).createFromCache('text').getChildByID('contents');
-		
 		//let input = nameinput.getElementById('textbox');
-		let input = nameinput.childNodes[1].childNodes[0];
-		socket.emit('console', input);
+		let input = nameinput.children[0].children[0];
+		console.log(nameinput.children);
 		input.addEventListener('keydown', (event) => {
 			if(event.keyCode == 13 && input.value != ''){
 				socket.emit('console', `ENTER PRESSED: ${input.value}`);
@@ -72,7 +71,7 @@ class RoomHub extends Phaser.Scene {
 			}
 		});
 	
-		let button = nameinput.childNodes[1].childNodes[1];
+		let button = nameinput.children[0].children[1];
 		button.addEventListener('click', () => {
 			if(input.value != ''){
 				socket.emit('console', `BUTTON PRESSED: ${input.value}`);
