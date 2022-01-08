@@ -35,12 +35,13 @@ class RoomHub extends Phaser.Scene {
 			this.add.text(0, 0, data, {fontFamily:'Georgia, Times, serif', fontSize: 16});
 			//socket.emit('console', JSON.stringify(data));	
 		});
+		/*
 		let text = this.add.text(250, 200, 'Testing room', {fontFamily:'Georgia, Times, serif', fontSize: 16});
 		text.setOrigin(0.5, 0.5);
 		
 		text.setInteractive().on('pointerdown', () => {
 			this.rexUI.edit(text);
-		});
+		});*/
 
 		//let check = document.createElement('div');
 		//check.innerHTML = '<h1>lmao</h1>;

@@ -39,9 +39,9 @@ io.on('connection', (socket) => {
 	socket.on('getRooms', (callback) => {
 		console.log('rooms called!');
 		let roomList = Object.values(rooms);
-		let tempString = roomList.map(data => {
+		let tempString = '[' + roomList.map(data => {
 			return JSON.stringify({name: data.name, id: data.id, players: data.sockets.length});
-		}).join(', ');
+		}).join(', ') + ']';
 		//console.log(tempString);
 		callback(tempString); 
 	});

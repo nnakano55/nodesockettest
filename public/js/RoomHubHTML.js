@@ -6,28 +6,47 @@ function setRoomHubHTML(html, state){
 	let createRoomMenu = menu.children.createRoomMenu;
 
 	let contents = html.getChildByID('contents');
-	console.log(contents.children.createRoom);
-	console.log(contents.querySelector('#createRoom').querySelector('#textbox'));
 	let createRoom = contents.querySelector('#createRoom');
 	let findRoom = contents.querySelector('#browseRoom');
 
 	let textbox = createRoom.querySelector('#textbox');
+	let submit = createRoom.querySelector('#submit');
+	
+	let roomTable = findRoom.querySelector('#roomTable');
+	let roomJoinRoom = findRoom.querySelector('#join');
+	let roomRefresh = findRoom.querySelector('#refresh');
+	let roomSearch = findRoom.querySelector('#searchbox');
+	let roomSearchOption = findRoom.querySelector('#searchOption');
+
+	roomRefresh.addEventListener('click', () => {
+		if(roomSearchOption.value !== '')
+			refreshTableInfoSearching(roomTable, roomSearchOption.value, roomSearch.value);
+		else
+			refreshTableInfo(roomTable);
+	});
+
+	roomSearch.addEventListener('keydown', (event) => {
+		refreshTableInfoSearching(roomTable, roomSearchOption.value, roomSearch.value);
+	});
+
 	textbox.addEventListener('keydown', (event) => {
 		if(event.keyCode == 13 && textbox.value != ''){
 			socket.emit('console', `ENTER PRESSED: ${textbox.value}`);
 			socket.emit('createRoom', textbox.value, (res) => {
     				socket.emit('console',JSON.stringify(res));
+    				refreshTableInfo(roomTable);
 			});
 			textbox.value = '';
+
 		}
 	});
 
-	let submit = createRoom.querySelector('#submit');
 	submit.addEventListener('click', () => {
 		if(textbox.value != ''){
 			socket.emit('console', `BUTTON PRESSED: ${textbox.value}`);
 			socket.emit('createRoom', textbox.value, (res) => {
     				socket.emit('console',JSON.stringify(res));
+    				refreshTableInfo(roomTable);
 			});
 			textbox.value = '';
 		}
@@ -38,7 +57,6 @@ function setRoomHubHTML(html, state){
 		createRoomMenu.setAttribute('class', '');
 		findRoom.style.display = 'flex';
 		createRoom.style.display = 'none';
-		console.log('called');
 	});
 
 	createRoomMenu.addEventListener('click', () => {
@@ -46,7 +64,71 @@ function setRoomHubHTML(html, state){
 		findRoomMenu.setAttribute('class', '');
 		createRoom.style.display = 'flex';
 		findRoom.style.display = 'none';
-		console.log('called');
+	});
+
+	refreshTableInfo(roomTable);
+
+}
+
+function refreshTableInfo(table){
+	table.innerHTML = '';
+	socket.emit('getRooms', (data) => {
+		let info = JSON.parse(data);
+		console.log(info);
+		for(room of info){
+			let tr = document.createElement('tr');
+			tr.innerHTML = `
+				<td>Room name: ${room.name}</td>
+				<td>id: ${room.id}</td>
+				<td>Players: ${room.players}</td>`;
+
+			tr.addEventListener('click', () => {
+				let list = table.querySelectorAll('tr');
+				for(item of list)
+					item.setAttribute('class', '');
+				tr.setAttribute('class', 'active');
+			});
+			table.append(tr);
+		}
+
+	});
+}
+
+function refreshTableInfoSearching(table, type='', value=''){
+	if(value === ''){
+		refreshTableInfo(table);
+		return;
+	}
+
+	table.innerHTML = '';
+	socket.emit('getRooms', (data) => {
+		let info = JSON.parse(data);
+		console.log(info);
+		for(let i = 0; i < info.length; i++){
+
+			if(type === 'name' && !info[i].name.includes(value)){
+				console.log('continue');
+					continue;
+			} else if(type === 'id' && !info[i].id.includes(value)) {
+				if(!info[i].id.includes(value))
+					continue;
+			}
+			console.log('passed');
+			let tr = document.createElement('tr');
+			tr.innerHTML = `
+				<td>Room name: ${info[i].name}</td>
+				<td>id: ${info[i].id}</td>
+				<td>Players: ${info[i].players}</td>`;
+
+			tr.addEventListener('click', () => {
+				let list = table.querySelectorAll('tr');
+				for(item of list)
+					item.setAttribute('class', '');
+				tr.setAttribute('class', 'active');
+			});
+			table.append(tr);
+		}
+
 	});
 }
 
