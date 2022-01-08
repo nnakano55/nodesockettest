@@ -13,7 +13,7 @@ function setRoomHubHTML(html, state){
 	let submit = createRoom.querySelector('#submit');
 	
 	let roomTable = findRoom.querySelector('#roomTable');
-	let roomJoinRoom = findRoom.querySelector('#join');
+	let roomJoin = findRoom.querySelector('#join');
 	let roomRefresh = findRoom.querySelector('#refresh');
 	let roomSearch = findRoom.querySelector('#searchbox');
 	let roomSearchOption = findRoom.querySelector('#searchOption');
@@ -34,7 +34,8 @@ function setRoomHubHTML(html, state){
 			socket.emit('console', `ENTER PRESSED: ${textbox.value}`);
 			socket.emit('createRoom', textbox.value, (res) => {
     				socket.emit('console',JSON.stringify(res));
-    				refreshTableInfo(roomTable);
+    				//refreshTableInfo(roomTable);
+				this.scene.start('RoomState');
 			});
 			textbox.value = '';
 
@@ -47,6 +48,7 @@ function setRoomHubHTML(html, state){
 			socket.emit('createRoom', textbox.value, (res) => {
     				socket.emit('console',JSON.stringify(res));
     				refreshTableInfo(roomTable);
+				//this.scene.start('Room');
 			});
 			textbox.value = '';
 		}
@@ -64,6 +66,17 @@ function setRoomHubHTML(html, state){
 		findRoomMenu.setAttribute('class', '');
 		createRoom.style.display = 'flex';
 		findRoom.style.display = 'none';
+	});
+	
+	roomJoin.addEventListener('click', () => {
+		let active = roomTable.querySelector('.active');
+		if(active){
+			let id = active.children[1].innerText.match(/(?<=id:\s)w+/g);
+			//socket.emit('joinRoom', id, () => {
+			//	this.scene.start('Room');
+			//});
+			socket.emit('console', `check active click: ${id}`);
+		}
 	});
 
 	refreshTableInfo(roomTable);

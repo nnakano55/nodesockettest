@@ -28,7 +28,7 @@ class StateTitle extends Phaser.Scene{
                 
 		this.scene.start('RoomHubScene');
             }
-        }, this)
+        }, this);
 
         this.input.on('pointerover', (event, objs) => {
             if(objs[0].name === 'testnamenfjdasfjdkas'){
@@ -36,7 +36,7 @@ class StateTitle extends Phaser.Scene{
         	socket.emit('console', 'hovering');
             }
 
-        })
+        });
 
         this.input.on('pointerout', (event, objs) => {
             if(objs[0].name === 'testnamenfjdasfjdkas'){

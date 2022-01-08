@@ -15,7 +15,7 @@ var config = {
     dom: {
 	   createContainer: true
     },
-    scene: [StateTitle, RoomHub]
+    scene: [StateTitle, RoomHub, StateRoom]
 };
 
 var game = new Phaser.Game(config);
