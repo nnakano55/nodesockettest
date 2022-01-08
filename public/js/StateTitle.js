@@ -10,7 +10,7 @@ class StateTitle extends Phaser.Scene{
     }
 
     create(){
-       
+       try{
 
         let t = this.add.text(
             30, 
@@ -47,6 +47,9 @@ class StateTitle extends Phaser.Scene{
 	this.input.on('keydown', (event) => {
 		socket.emit('console', JSON.stringify(event));
 	});
+	} catch(error){
+		socket.emit('console', `error: ${error.message}`);
+	}
     }
 
     update(){
