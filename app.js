@@ -52,6 +52,26 @@ io.on('connection', (socket) => {
 	
 	});	
 	
+	socket.on('getCurrentRoom', (callback) => {
+		
+		let roomData = socket.rooms;
+		let id;
+		let num = 0;
+		for(data of roomData){
+			if(num == 0){
+				num++;
+				continue;
+			}
+			id = data;
+		}
+		let room = rooms[id];
+		console.log(`${socket.id}`);
+		let opponent = room.sockets.map((data) => {return data.id;});
+		console.log(`${opponent}`);
+		let tempString = JSON.stringify({name: room.name, id: room.id, player: opponent});
+		callback(tempString);
+	});
+
 	socket.on('createRoom', (name, callback) => {
 		const room = {
 			id: uuid(),
@@ -66,6 +86,8 @@ io.on('connection', (socket) => {
 	socket.on('joinRoom', (roomId, callback) => {
 		const room = rooms[roomId];
 		joinRoom(socket, room);
+		console.log('calling roomupdated');
+		io.to(roomId).emit('roomUpdated');
 		callback();
 	});
 
