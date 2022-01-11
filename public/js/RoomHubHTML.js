@@ -71,10 +71,22 @@ function setRoomHubHTML(html, state){
 		if(active){
 			console.log(active.children[1].innerText);
 			let id = active.children[1].innerHTML.match(/(?<=id:\s)[a-zA-Z0-9]+/g)[0];
-			console.log(id);
-			socket.emit('joinRoom', id, () => {
-				state.scene.start('RoomState');
-			});
+			let players = active.children[2].innerHTML.match(/(?<=Players:\s)\d/g)[0];
+			console.log(players);
+			if(players < 2){
+				socket.emit('joinRoom', id, (roomEntered) => {
+					
+					if(roomEntered)
+						state.scene.start('RoomState');
+					else{
+						//do something when the room does not exist
+						console.log("failed to join room");
+					}
+				});
+			} else {
+				console.log('you cannot join a room with 2 players already');
+				// cannot join room with 2 people already
+			}
 			//socket.emit('console', `check active click: ${id}`);
 		}
 	});

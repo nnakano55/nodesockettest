@@ -26,6 +26,13 @@ const uuid = () => {
 	return id;
 };
 
+const opponentId = (socket, room) => {
+	for(data of room.sockets){
+		if(data.id !== socket.id)
+			return data.id;
+	}
+};
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
@@ -65,11 +72,14 @@ io.on('connection', (socket) => {
 			id = data;
 		}
 		let room = rooms[id];
-		console.log(`${socket.id}`);
-		let opponent = room.sockets.map((data) => {return data.id;});
-		console.log(`${opponent}`);
-		let tempString = JSON.stringify({name: room.name, id: room.id, player: opponent});
-		callback(tempString);
+		if(room){
+			let opponent = room.sockets.map((data) => data.id);
+			let tempString = JSON.stringify({name: room.name, id: room.id, player: opponent});
+			io.to(opponent).emit('opponentEnteredRoom');
+			callback(true, tempString);
+		}else{
+			callback(false, "nope");
+		}
 	});
 
 	socket.on('createRoom', (name, callback) => {
@@ -79,16 +89,56 @@ io.on('connection', (socket) => {
 			sockets: []
 		};
 		rooms[room.id] = room;
+		console.log(rooms);
 		joinRoom(socket, room);
 		callback({status: `room created! id: ${room.id} name: ${name}`});
 	});
 
 	socket.on('joinRoom', (roomId, callback) => {
 		const room = rooms[roomId];
-		joinRoom(socket, room);
-		console.log('calling roomupdated');
-		io.to(roomId).emit('roomUpdated');
+		if(room && room.sockets.length < 2){
+			joinRoom(socket, room);
+			io.to(roomId).emit('roomUpdated');
+			callback(true);
+		}
+		else{
+			callback(false);
+		}
+	});
+
+	socket.on('leaveRoom', (callback) => {
+		let roomData = socket.rooms;
+		let id;
+		let num = 0;
+		for(data of roomData){
+			if(num == 0){
+				num++;
+				continue;
+			}
+			id = data;
+		}
+		let room = rooms[id];
+		
+		if(room.sockets[0].id === socket.id)
+			room.sockets.shift();
+		else 
+			room.sockets.pop();
+
+		if(room.sockets.length == 0){
+			delete rooms[id];
+		}
+
+		socket.leave(id);
+		io.to(id).emit('roomUpdated');
+
 		callback();
+
+	});
+
+	socket.on('checkboxChanged', (opponentID, currentState) => {
+		console.log(`opponentid: ${opponentID}, currentState: ${currentState}`);
+
+		io.to(opponentID).emit('opponentCheckUpdated', currentState);
 	});
 
 	socket.on('disconnect', () => {
