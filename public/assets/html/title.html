@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<style>
+			#content{
+				width: 800px;
+				height: 400px;
+				background-color: #FFFFFF;
+				display: flex;
+				justify-content: center;
+				flex-direction: column;
+				border-width: 2px;
+				border-color: #000000;
+				border-style: solid;
+			}
+
+			.halfContent{
+				position: relative;
+				z-index: 20;
+				width: 100%;
+				height: 50%;
+				display: flex;
+				justify-content: center;
+			}
+
+			input[type="button"]{
+				font-size: 20px;
+				width: 200px;
+				padding:10px; 
+				border: none;
+				outline: none;
+				border-radius: 2px;
+				background-color: #AAAAAA;
+				display: inline-block;
+				margin: auto 0;
+			}
+			
+			input[type="button"]:hover{
+				background-color: #EEEEEE;
+			}
+
+			#PONG{
+				position: absolute;
+				z-index: 0;
+				width: 800px;
+				height: 400px;
+				margin: auto 0;
+				display: flex;
+				justify-content: center;
+			}
+
+			#PONG > span{
+				font-family: 'Times New Roman', serif;
+				font-size: 150px;
+				text-align: center;
+				margin: auto 0;
+			}
+
+		</style>
+	</head>
+
+	<body>
+		<div id="content">
+			<div id="singlePlayerContainer" class="halfContent">
+				<input id="singlePlayerButton" value="Play single-player" type="button">
+			</div>
+			<div id="multiPlayerContainer" class="halfContent">
+				<input id="multiPlayerButton" value="Play multiplayer" type="button">
+			</div>
+			<div id="PONG">
+				<span>PONG</span>
+			</div>
+		</div>
+	</body>
+
+</html>

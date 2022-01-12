@@ -8,19 +8,17 @@ var config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 300 },
             debug: false
         }
     },
     dom: {
 	   createContainer: true
     },
-    scene: [StateTitle, RoomHub, StateRoom]
+    scene: [StateTitle, RoomHub, StateRoom, Pong]
 };
-
-var game = new Phaser.Game(config);
-
+var multiplayer = false;
 var socket = io();
+var game = new Phaser.Game(config);
 	
 socket.on('connect', () => {
 	socket.emit('welcome'); 
