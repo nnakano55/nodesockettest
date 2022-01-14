@@ -47,7 +47,12 @@ class StateRoom extends Phaser.Scene{
 		this.startRoom.addEventListener('click', () => {
 			if(this.player1Check.checked && this.player2Check.checked){
 				// start game!
-				console.log("start game!");
+				console.log("start game");
+				
+				// call on socket to tell the non-host side that the game is going to begin
+				socket.emit('startGame');
+
+				
 			} else {
 				console.log("not ready");
 			}
@@ -109,6 +114,11 @@ class StateRoom extends Phaser.Scene{
 					socket.emit('checkboxChanged', opponentId, this.player2Check.checked);
 				}
 			}
+		});
+
+	    	socket.on('startGameClient', () => {
+			multiplayer = true;
+			this.scene.start('PongScene');
 		});
 
 		socket.emit('getCurrentRoom', (success, data) => {

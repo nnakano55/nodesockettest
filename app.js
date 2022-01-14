@@ -81,6 +81,24 @@ io.on('connection', (socket) => {
 			callback(false, "nope");
 		}
 	});
+	
+	socket.on('startGame', () => {
+		
+		let roomData = socket.rooms;
+		let id;
+		let num = 0;
+		for(data of roomData){
+			if(num == 0){
+				num++;
+				continue;
+			}
+			id = data;
+		}
+		let room = rooms[id];
+		if(room){
+			io.to(id).emit('startGameClient');
+		}
+	});
 
 	socket.on('createRoom', (name, callback) => {
 		const room = {
@@ -91,6 +109,7 @@ io.on('connection', (socket) => {
 		rooms[room.id] = room;
 		console.log(rooms);
 		joinRoom(socket, room);
+		socket.roomId = room.id;
 		callback({status: `room created! id: ${room.id} name: ${name}`});
 	});
 
@@ -98,6 +117,8 @@ io.on('connection', (socket) => {
 		const room = rooms[roomId];
 		if(room && room.sockets.length < 2){
 			joinRoom(socket, room);
+			socket.roomId = room.id;
+			console.log(socket.roomId);
 			io.to(roomId).emit('roomUpdated');
 			callback(true);
 		}
@@ -143,6 +164,30 @@ io.on('connection', (socket) => {
 
 	socket.on('disconnect', () => {
 		console.log('user disconnected');
+		let roomData = socket.rooms;
+		console.log(socket.roomId);
+		let id;
+		let num = 0;
+		for(data of roomData){
+			if(num == 0){
+				num++;
+				continue;
+			}
+			id = data;
+		}
+		let room = rooms[socket.roomId];
+		if(room){	
+			if(room.sockets[0].id === socket.id)
+				room.sockets.shift();
+			else 
+				room.sockets.pop();
+
+			if(room.sockets.length === 0){
+				delete rooms[id];
+			}
+
+			socket.leave(socket.roomId);
+		}
 	});
 
 	socket.on('chat message', (msg) => {

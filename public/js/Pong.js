@@ -35,10 +35,12 @@ class Pong extends Phaser.Scene{
              this.ball.body.velocity.y += 50;
         }, null, this);
         this.physics.add.collider(this.opponent, this.ball, () => {
-            console.log('collided!')
+            console.log('collided!');
+		/*
              this.ball.body.velocity.x += 50;
              this.ball.body.velocity.y += 50;
-        }, null, this);
+        	*/
+	}, null, this);
         
         console.log(this.player);
 
