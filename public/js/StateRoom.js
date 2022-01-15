@@ -19,6 +19,7 @@ class StateRoom extends Phaser.Scene{
 
     create(){
 		let room = this.add.dom(0,0).createFromCache('room');
+		room.setOrigin(0, 0);
 
 		let roomTop = room.getChildByID('roomTop');
 		this.roomName = roomTop.querySelector('#roomName');
@@ -35,7 +36,26 @@ class StateRoom extends Phaser.Scene{
 
 		host = false;
 
-		room.setOrigin(0, 0);
+		let currentRoomOnChange = (success, data) => {
+			console.log('currentRoomOnChange called!');
+			if(success){
+				this.refreshRoom(JSON.parse(data));
+		
+				let opponentId = this.getOpponentId();
+				if(opponentId && opponentId != 'Slot'){
+					if(host){
+						socket.emit('checkboxChanged', opponentId, this.player1Check.checked);
+					} else {
+						socket.emit('checkboxChanged', opponentId, this.player2Check.checked);
+					}
+				}
+
+			}
+			else
+				console.log('failed to get current room');
+		};
+
+		
 		
 		this.leaveRoom.addEventListener('click', () => {
 			socket.emit('leaveRoom', () => {
@@ -73,27 +93,7 @@ class StateRoom extends Phaser.Scene{
 
 		socket.on('roomUpdated', () => {
 			console.log('roomUpdated');	
-
-			socket.emit('getCurrentRoom', (success, data) => {
-				if(success){
-					this.refreshRoom(JSON.parse(data));
-				
-					let opponentId = this.getOpponentId();
-					if(opponentId && opponentId != 'Slot'){
-						if(host){
-							socket.emit('checkboxChanged', opponentId, this.player1Check.checked);
-						} else {
-							socket.emit('checkboxChanged', opponentId, this.player2Check.checked);
-						}
-					}
-
-				}
-				else
-					console.log('failed to get current room');
-			});
-			
-
-
+			socket.emit('getCurrentRoom',currentRoomOnChange);
 		});
 
 		socket.on('opponentCheckUpdated', (state) => {
@@ -116,28 +116,17 @@ class StateRoom extends Phaser.Scene{
 			}
 		});
 
-	    	socket.on('startGameClient', () => {
+	    socket.on('startGameClient', () => {
 			multiplayer = true;
 			this.scene.start('PongScene');
 		});
 
-		socket.emit('getCurrentRoom', (success, data) => {
-			
-			if(success){
-				this.refreshRoom(JSON.parse(data));
-				let opponentId = this.getOpponentId();
-				if(opponentId && opponentId != 'Slot'){
-					if(this.host){
-						socket.emit('checkboxChanged', opponentId, this.player1Check.checked);
-					} else {
-						socket.emit('checkboxChanged', opponentId, this.player2Check.checked);
-					}
-				}
-			}
-			else
-				console.log('failed to get current room');
+		socket.on('disconnected', () => {
+			socket.emit('getCurrentRoom', currentRoomOnChange);
 		});
 
+		socket.emit('getCurrentRoom', currentRoomOnChange);
+		
 	}
 
 	update(){
@@ -178,4 +167,6 @@ class StateRoom extends Phaser.Scene{
 		}
 
 	}// end refreshRoom
+
+
 }

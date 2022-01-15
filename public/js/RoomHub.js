@@ -17,7 +17,7 @@ class RoomHub extends Phaser.Scene {
 	}
 
 	create(){
-		
+		/*
 		let rect1 = this.add.circle(400, 200, 20, 0xFFFFFF);
 		rect1.setIterations(0.25);
 		
@@ -29,6 +29,7 @@ class RoomHub extends Phaser.Scene {
 			repeat: -1,
 			ease: 'Quad.easeInOut'
 		});
+		*/
 		
 		socket.emit('getRooms', (data) => {
 			socket.emit('console', data);

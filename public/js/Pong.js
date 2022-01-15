@@ -17,10 +17,10 @@ class Pong extends Phaser.Scene{
 
         this.cursors = this.input.keyboard.createCursorKeys();
         
-	this.controllerPlayer;
-	this.opponentPlayer;
-	
-	this.player1 = this.add.rectangle(50, 200, 20, 100, 0xffffff);
+		this.controllerPlayer;
+		this.opponentPlayer;
+		
+		this.player1 = this.add.rectangle(50, 200, 20, 100, 0xffffff);
         this.player2 = this.add.rectangle(750, 200, 20, 100, 0xffffff);
         this.ball = this.add.rectangle(400, 200, 20, 20, 0xffffff);
         this.score;
@@ -92,42 +92,48 @@ class Pong extends Phaser.Scene{
 		socket.emit('sendPlayerCollision', sendData);
         }, null, this);
 	
-	socket.on('gameStart', (data) => {
-		let dataObj = JSON.parse(data);
-		this.ball.body.velocity.x = dataObj.velocityX;
-		this.ball.body.velocity.y = dataObj.velocityY;
-	});
+		socket.on('gameStart', (data) => {
+			let dataObj = JSON.parse(data);
+			this.ball.body.velocity.x = dataObj.velocityX;
+			this.ball.body.velocity.y = dataObj.velocityY;
+		});
 
-	socket.on('receiveOpponentLoss', () => {
-		// do whatever when opponentLost
-		//
-		console.log('I won!');
-	});
+		socket.on('receiveOpponentLoss', () => {
+			// do whatever when opponentLost
+			//
+			console.log('I won!');
+		});
 
-	socket.on('receiveOpponentData', (data) => {
-		let dataObj = JSON.parse(data);
-		this.opponentPlayer.y = dataObj.y;
+		socket.on('receiveOpponentData', (data) => {
+			let dataObj = JSON.parse(data);
+			this.opponentPlayer.y = dataObj.y;
+			
+			/*this.tweens.add({
+				targets: opponentPlayer,
+				y: dataObj.y,
+				yoyo: false,
+				repeat: 1,
+				ease: 'Quad.easeInOut'
+			});*/
+		});
 		
-		/*this.tweens.add({
-			targets: opponentPlayer,
-			y: dataObj.y,
-			yoyo: false,
-			repeat: 1,
-			ease: 'Quad.easeInOut'
-		});*/
-	});
-	
-	socket.on('receiveOpponentCollision', (data) => {
-		socket.emit('console', 'on recieve');
-		let dataObj = JSON.parse(data);
-		this.ball.x = dataObj.x;
-		this.ball.y = dataObj.y;
-		this.ball.body.velocity.x = dataObj.velocityX;
-		this.ball.body.velocity.y = dataObj.velocityY;
-		socket.emit('console', 'after recieve');
-	});
+		socket.on('receiveOpponentCollision', (data) => {
+			socket.emit('console', 'on recieve');
+			let dataObj = JSON.parse(data);
+			this.ball.x = dataObj.x;
+			this.ball.y = dataObj.y;
+			this.ball.body.velocity.x = dataObj.velocityX;
+			this.ball.body.velocity.y = dataObj.velocityY;
+			socket.emit('console', 'after recieve');
+		});
 
-	socket.emit('initiateGame');
+		socket.on('disconnected', () => {
+			socket.emit('leaveRoom', () => {
+				this.scene.start('SceneMain');	
+			});
+		});
+
+		socket.emit('initiateGame');
 	} catch(err){
 		socket.emit('console', `error: ${err.message}`);
 	}

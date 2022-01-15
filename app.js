@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
 	socket.on('initiateGame', () => {
 		socket.isReady = true;
 		let room = rooms[socket.roomId];
-		if(room){
+		if(room && room.sockets.length == 2){
 			if(room.sockets[0].isReady && room.sockets[1].isReady){
 				let x = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
 				let y = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
@@ -210,9 +210,11 @@ io.on('connection', (socket) => {
 			}
 
 			socket.leave(socket.roomId);
+			io.to(socket.roomId).emit('disconnected');
 		} else {
 			console.log('room not found');
 		}
+
 	});
 
 	socket.on('chat message', (msg) => {
