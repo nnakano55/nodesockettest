@@ -17,6 +17,7 @@ var config = {
     scene: [StateTitle, RoomHub, StateRoom, Pong]
 };
 var multiplayer = false;
+var host = false;
 var socket = io();
 var game = new Phaser.Game(config);
 	

@@ -42,7 +42,57 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
 	
 	console.log('a user connected: ', socket.id);
-	
+	socket.roomId = '';
+	socket.isHost = false;
+	socket.isReady = false;
+
+	socket.on('initiateGame', () => {
+		socket.isReady = true;
+		let room = rooms[socket.roomId];
+		if(room){
+			if(room.sockets[0].isReady && room.sockets[1].isReady){
+				let x = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
+				let y = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
+				let out = JSON.stringify({velocityX: x, velocityY: y});
+				io.to(room.id).emit('gameStart', out);
+			}
+		}
+
+	});
+
+	socket.on('sendPlayerData', (data) => {
+		let room = rooms[socket.roomId];
+		if(room){
+			if(socket.isHost){
+				io.to(room.sockets[1].id).emit('receiveOpponentData', data);
+			} else {
+				io.to(room.sockets[0].id).emit('receiveOpponentData', data);
+			}
+		}	
+	});
+
+	socket.on('sendPlayerCollision', (data) => {
+		let room = rooms[socket.roomId];
+		if(room){
+			if(socket.isHost){
+				io.to(room.sockets[1].id).emit('receiveOpponentCollision', data);
+			} else {
+				io.to(room.sockets[0].id).emit('receiveOpponentCollision', data);
+			}
+		}
+	});
+
+	socket.on('sendPlayerLoss', () => {
+		let room = rooms[socket.roomId];
+		if(room){
+			if(socket.isHost){
+				io.to(room.sockets[1].id).emit('receiveOpponentLoss');
+			} else {
+				io.to(room.sockets[0].id).emit('receiveOpponentLoss');
+			}
+		}
+	});
+
 	socket.on('getRooms', (callback) => {
 		console.log('rooms called!');
 		let roomList = Object.values(rooms);
@@ -61,17 +111,7 @@ io.on('connection', (socket) => {
 	
 	socket.on('getCurrentRoom', (callback) => {
 		
-		let roomData = socket.rooms;
-		let id;
-		let num = 0;
-		for(data of roomData){
-			if(num == 0){
-				num++;
-				continue;
-			}
-			id = data;
-		}
-		let room = rooms[id];
+		let room = rooms[socket.roomId];
 		if(room){
 			let opponent = room.sockets.map((data) => data.id);
 			let tempString = JSON.stringify({name: room.name, id: room.id, player: opponent});
@@ -85,18 +125,9 @@ io.on('connection', (socket) => {
 	socket.on('startGame', () => {
 		
 		let roomData = socket.rooms;
-		let id;
-		let num = 0;
-		for(data of roomData){
-			if(num == 0){
-				num++;
-				continue;
-			}
-			id = data;
-		}
-		let room = rooms[id];
+		let room = rooms[socket.roomId];
 		if(room){
-			io.to(id).emit('startGameClient');
+			io.to(socket.roomId).emit('startGameClient');
 		}
 	});
 
@@ -110,6 +141,7 @@ io.on('connection', (socket) => {
 		console.log(rooms);
 		joinRoom(socket, room);
 		socket.roomId = room.id;
+		socket.isHost = true;
 		callback({status: `room created! id: ${room.id} name: ${name}`});
 	});
 
@@ -118,6 +150,7 @@ io.on('connection', (socket) => {
 		if(room && room.sockets.length < 2){
 			joinRoom(socket, room);
 			socket.roomId = room.id;
+			socket.isHost = false;
 			console.log(socket.roomId);
 			io.to(roomId).emit('roomUpdated');
 			callback(true);
@@ -129,29 +162,29 @@ io.on('connection', (socket) => {
 
 	socket.on('leaveRoom', (callback) => {
 		let roomData = socket.rooms;
-		let id;
-		let num = 0;
-		for(data of roomData){
-			if(num == 0){
-				num++;
-				continue;
+		let room = rooms[socket.roomId];
+		if(room){
+			if(room.sockets[0].id === socket.id)
+				room.sockets.shift();
+			else 
+				room.sockets.pop();
+	
+			if(room.sockets.length > 0 && socket.isHost == true){
+				room.sockets[0].isHost = true;
+				socket.isHost = false;
 			}
-			id = data;
+	
+			if(room.sockets.length == 0){
+				delete rooms[socket.roomId];
+			}
+
+			socket.leave(socket.roomId);
+			// emitting roomUpdated and callback might be a recipe for disaster at worst
+			// probably unclean and messy at best
+			io.to(socket.roomId).emit('roomUpdated');
+			socket.roomId = '';
+			socket.isHost = false;
 		}
-		let room = rooms[id];
-		
-		if(room.sockets[0].id === socket.id)
-			room.sockets.shift();
-		else 
-			room.sockets.pop();
-
-		if(room.sockets.length == 0){
-			delete rooms[id];
-		}
-
-		socket.leave(id);
-		io.to(id).emit('roomUpdated');
-
 		callback();
 
 	});
@@ -165,16 +198,6 @@ io.on('connection', (socket) => {
 	socket.on('disconnect', () => {
 		console.log('user disconnected');
 		let roomData = socket.rooms;
-		console.log(socket.roomId);
-		let id;
-		let num = 0;
-		for(data of roomData){
-			if(num == 0){
-				num++;
-				continue;
-			}
-			id = data;
-		}
 		let room = rooms[socket.roomId];
 		if(room){	
 			if(room.sockets[0].id === socket.id)
@@ -183,10 +206,12 @@ io.on('connection', (socket) => {
 				room.sockets.pop();
 
 			if(room.sockets.length === 0){
-				delete rooms[id];
+				delete rooms[socket.roomId];
 			}
 
 			socket.leave(socket.roomId);
+		} else {
+			console.log('room not found');
 		}
 	});
 
