@@ -1,3 +1,6 @@
+const MAX_ROLLBACK_FRAMES = 10;
+const FRAME_ADVANTAGE_LIMIT = 10;
+const INITIAL_FRAME = 0;
 
 class Pong extends Phaser.Scene{
     
@@ -11,8 +14,6 @@ class Pong extends Phaser.Scene{
 
     create(){
 
-	try{
-
         this.physics.world.setFPS(60);
 
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -23,8 +24,7 @@ class Pong extends Phaser.Scene{
 		this.player1 = this.add.rectangle(50, 200, 20, 100, 0xffffff);
         this.player2 = this.add.rectangle(750, 200, 20, 100, 0xffffff);
         this.ball = this.add.rectangle(400, 200, 20, 20, 0xffffff);
-        this.score;
-
+        this.score = {player1: 0, player2:0};
 
         this.physics.add.existing(this.player1);
         this.physics.add.existing(this.player2);
@@ -34,48 +34,63 @@ class Pong extends Phaser.Scene{
         this.player1.body.collideWorldBounds = true;
         this.player2.body.setImmovable();
         this.player2.body.collideWorldBounds = true;
-	/*
-        this.physics.add.collider(this.player1, this.ball, () => {
-            console.log('collided!');
-		
-        }, null, this);
-        this.physics.add.collider(this.player2, this.ball, () => {
-            console.log('collided!');
-		
-	}, null, this);
-        */
-        console.log(this.player1);
 
         this.ball.body.bounce.x = 1;
         this.ball.body.bounce.y = 1;
         this.ball.body.collideWorldBounds = true;
         this.ball.body.onWorldBounds = true;
+
+
         
+        let startGame = (data) => {
+        	console.log('startGamecalled');
+			let dataObj = JSON.parse(data);
+			this.ball.body.velocity.x = dataObj.velocityX;
+			this.ball.body.velocity.y = dataObj.velocityY;
+        };
+
         this.ball.body.world.on('worldbounds', (body, up, down, left, right) => {
-            if(!multiplayer){
-	  	if(left){
-                	console.log("player 2 wins");
-            	} else if(right) {
-                	console.log("player 1 wins");
-            	}
-	    } else {
-		if((host && left) || (!host && right)){
-			
-			socket.emit('sendPlayerLoss');
-			
-		} 
-	    }
-        });
+
+	        if(!multiplayer){
+		  		if(left){
+	                this.score.player2++;
+	                this.stopGame();
+	                startGame(JSON.stringify({
+	                	velocityX: this.getRandomVelocity(200),
+	                	velocityY: this.getRandomVelocity(200)
+	                }));
+	            } else if(right) {
+	                this.score.player1++
+	                this.stopGame();
+	                startGame(JSON.stringify({
+	                	velocityX: this.getRandomVelocity(200),
+	                	velocityY: this.getRandomVelocity(200)
+	                }));
+	            }
+		    } else {		
+				if(host && left){
+					this.stopGame();
+					this.score.player2++;
+					socket.emit('sendPlayerLoss' + DEBUG);
+					socket.emit('initiateGame' + DEBUG);
+				} else if (!host && right){
+					this.stopGame();
+					this.score.player1++;
+					socket.emit('sendPlayerLoss' + DEBUG);
+					socket.emit('initiateGame' + DEBUG);	
+				} 
+		    }
+
+        }); // End on - worldbounds 
 
         if(multiplayer){
-		if(host){
-			this.controllerPlayer = this.player1;
-			this.opponentPlayer = this.player2;
-		} else {
-			this.controllerPlayer = this.player2;
-			this.opponentPlayer = this.player1;
-		}
-
+			if(host){
+				this.controllerPlayer = this.player1;
+				this.opponentPlayer = this.player2;
+			} else {
+				this.controllerPlayer = this.player2;
+				this.opponentPlayer = this.player1;
+			}
         } else {
             this.controllerPlayer = this.player1;
             this.ball.body.velocity.x = this.getRandomVelocity(200);
@@ -83,38 +98,30 @@ class Pong extends Phaser.Scene{
         }
 
         this.physics.add.collider(this.controllerPlayer, this.ball, () => {
-		let sendData =JSON.stringify({
-			x: this.ball.x,
-			y: this.ball.y,
-			velocityX: this.ball.body.velocity.x,
-			velocityY: this.ball.body.velocity.y
-		});
-		socket.emit('sendPlayerCollision', sendData);
+			let sendData = JSON.stringify({
+				x: this.ball.x,
+				y: this.ball.y,
+				velocityX: this.ball.body.velocity.x,
+				velocityY: this.ball.body.velocity.y
+			});
+			socket.emit('sendPlayerCollision' + DEBUG, sendData);
         }, null, this);
 	
-		socket.on('gameStart', (data) => {
-			let dataObj = JSON.parse(data);
-			this.ball.body.velocity.x = dataObj.velocityX;
-			this.ball.body.velocity.y = dataObj.velocityY;
-		});
+		socket.on('gameStart', startGame);
 
 		socket.on('receiveOpponentLoss', () => {
-			// do whatever when opponentLost
-			//
-			console.log('I won!');
+			if(host){
+				this.score.player1++;
+			} else {
+				this.score.player2++;
+			}
+			this.stopGame();
+			socket.emit('initiateGame' + DEBUG);
 		});
 
 		socket.on('receiveOpponentData', (data) => {
 			let dataObj = JSON.parse(data);
 			this.opponentPlayer.y = dataObj.y;
-			
-			/*this.tweens.add({
-				targets: opponentPlayer,
-				y: dataObj.y,
-				yoyo: false,
-				repeat: 1,
-				ease: 'Quad.easeInOut'
-			});*/
 		});
 		
 		socket.on('receiveOpponentCollision', (data) => {
@@ -134,62 +141,138 @@ class Pong extends Phaser.Scene{
 		});
 
 		socket.emit('initiateGame');
-	} catch(err){
-		socket.emit('console', `error: ${err.message}`);
-	}
+
+
+        // set up for rollback netcode
+        this.localFrame = INITIAL_FRAME;
+        this.remoteFrame = INITIAL_FRAME;
+        this.syncFrame = INITIAL_FRAME;
+        this.remoteFrameAdvantage = 0;
+        this.opponentInput = {up: false, down: false};
+        this.gameStateContainer = [];
+
+        socket.on('getRollbackData', (d) => {
+        	let data = JSON.parse(d);
+        	this.remoteFrame = data.frame;
+        	this.remoteFrameAdvantage = data.advantage;
+        	this.opponentInput = {up: data.up, down: data.down};
+        });
+        
     }
 
     update(){
-        /*
-        if (cursors.left.isDown)
-        {
-            player.setVelocityX(-160);
-
-            player.anims.play('left', true);
-        }
-        else if (cursors.right.isDown)
-        {
-            player.setVelocityX(160);
-
-            player.anims.play('right', true);
-        }
-        else
-        {
-            player.setVelocityX(0);
-
-            player.anims.play('turn');
-        }
-
-        if (cursors.up.isDown && player.body.touching.down)
-        {
-            player.setVelocityY(-330);
-        }
-        */
-
-	try{
-        if (this.cursors.up.isDown){
-            this.controllerPlayer.body.velocity.y = -600;
-        } else if (this.cursors.down.isDown){
-            this.controllerPlayer.body.velocity.y = 600;
+    	// delay netcode update function
+        if (this.cursors.up.isDown && this.controllerPlayer.y > 50){
+            this.controllerPlayer.y += -10;
+        } else if (this.cursors.down.isDown && this.controllerPlayer.y < 350){
+            this.controllerPlayer.y += 10;
 
         } else {
-            this.controllerPlayer.body.velocity.y = 0;
+            //this.controllerPlayer.body.velocity.y = 0;
         }
-	
-	
-	let data = JSON.stringify({ y: this.controllerPlayer.y
-	});
-	
-	//let data = JSON.stringidy({y : 600});
 
-	socket.emit('sendPlayerData', data);
-	} catch(err){
-		socket.emit('console', `error: ${err.message}`);
-	}
+		let data = JSON.stringify({ y: this.controllerPlayer.y
+		});
+		socket.emit('sendPlayerData' + DEBUG, data);
+
+		// rollback netcode update function
+
+        // [Update Synchronization]
+        let finalFrame = this.remoteFrame;
+        if(this.remoteFrame > this.localFrame){
+        	let found = false;
+        	let foundFrame;
+        	/* Find the first frame where the predicted inputs do not match the
+        	 * actual inputs
+        	 */
+        	if(found){
+        		this.syncFrame = foundFrame - 1;
+        	} else {
+        		this.syncFrame = finalFrame;
+        	}
+        }
+
+        // [Rollback]
+        if(this.localFrame > this.syncFrame && this.remoteFrame > this.syncFrame){
+        	// [restoreGameState]
+        	// restoreGameState(); //restore game to syncFrame
+        	// select inputs from this.syncFrame + 1 from localFrames
+
+        	// [Rollback update]
+        	// simulateInputs();
+        	// updateGame();
+        	// storeGameState();
+        }
+
+		//[time synced]
+		let localFrameAdvantage = this.localFrame - this.remoteFrame;
+		let frameAdvantageDiff = localFrameAdvantage - this.remoteFrameAdvantage;
+		if(localFrameAdvantage < MAX_ROLLBACK_FRAMES && frameAdvantageDiff <= FRAME_ADVANTAGE_LIMIT){
+			this.localFrame++;
+			let rollbackData = JSON.stringify({
+				frame: this.localFrame,
+				advantage: this.localFrame - this.remoteFrame,
+				up: this.cursors.up.isDown,
+				down: this.cursors.down.isDown
+			});
+			// socket.emit('sendPlayerDataRollback', rollbackData);
+			updateGame();
+			storeGameState();
+		}
     }
     
     getRandomVelocity(orig){
-	return Math.floor(Math.random() * 2) === 0 ? orig : orig * -1;
+		return Math.floor(Math.random() * 2) === 0 ? orig : orig * -1;
+    }
+
+    stopGame(){
+    	this.ball.x = 400;
+    	this.ball.y = 200;
+    	this.ball.body.velocity.x = 0;
+    	this.ball.body.velocity.y = 0;
+    }
+
+    restoreGameState(){
+    	// restore game to this.syncFrame 
+    }
+
+    simulateInputs(){
+    	// get opponent input of syncFrame and apply it to syncFrame+1
+    }
+
+    updateGame(){
+
+    	if(this.cursors.up.isDown && this.controllerPlayer.y > 50){
+            this.controllerPlayer.y += -10;
+        } else if(this.cursors.down.isDown && this.controllerPlayer.y < 350){
+            this.controllerPlayer.y += 10;
+        }
+
+        if(this.opponentInput.up && this.opponentPlayer.y > 50){
+        	this.opponentPlayer.y += -10;
+        } else if(this.opponentInput.down && this.opponentPlayer.y < 350){
+        	this.opponentPlayer.y += 10;
+        }
+
+    }
+
+    storeGameState(){
+    	this.gameStateContainer.push({
+    		frame: this.localFrame,
+    		playerInput: {up: this.cursors.up.isDown, down: this.cursors.down.isDown},
+    		opponentInput: this.opponentInput,
+    		ball: {
+    			x: this.ball.x, y: this.ball.y, 
+    			velocityX: this.ball.body.velocity.x,
+    			velocityY: this.ball.body.velocity.y
+    		},
+    		player1Position: {x: this.player1.x, y: this.player1.y},
+    		player2Position: {x: this.player2.x, y: this.player2.y}
+    	});
+
+    	if(this.gameStateContainer.length > MAX_ROLLBACK_FRAMES){
+    		this.gameStateContainer.shift();
+    	}
     }
 
 }

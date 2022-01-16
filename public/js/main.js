@@ -19,6 +19,7 @@ var config = {
 var multiplayer = false;
 var host = false;
 var socket = io();
+var DEBUG = 'DEBUG'
 var game = new Phaser.Game(config);
 	
 socket.on('connect', () => {
