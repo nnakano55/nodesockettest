@@ -48,6 +48,17 @@ io.on('connection', (socket) => {
 	socket.isHost = false;
 	socket.isReady = false;
 
+	socket.on('sendPlayerDataRollback', (data) => {
+		let room = rooms[socket.roomId];
+		if(room){
+			if(socket.isHost){
+				io.to(room.sockets[1].id).emit('getRollbackData', data);
+			} else {
+				io.to(room.sockets[0].id).emit('getRollbackData', data);
+			}
+		}	
+	});
+
 	socket.on('initiateGame', () => {
 		socket.isReady = true;
 		let room = rooms[socket.roomId];
