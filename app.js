@@ -49,6 +49,7 @@ io.on('connection', (socket) => {
 	socket.isReady = false;
 
 	socket.on('sendPlayerDataRollback', (data) => {
+		
 		let room = rooms[socket.roomId];
 		if(room){
 			if(socket.isHost){
@@ -56,24 +57,42 @@ io.on('connection', (socket) => {
 			} else {
 				io.to(room.sockets[0].id).emit('getRollbackData', data);
 			}
-		}	
+		}
+			
 	});
+
+	socket.on('sendPlayerDataRollbackDEBUG', (data) => {
+		setTimeout(() => {
+			let room = rooms[socket.roomId];
+			if(room){
+				if(socket.isHost){
+					io.to(room.sockets[1].id).emit('getRollbackData', data);
+				} else {
+					io.to(room.sockets[0].id).emit('getRollbackData', data);
+				}
+			}
+		}, timeout);	
+	});
+
 
 	socket.on('initiateGame', () => {
-		socket.isReady = true;
-		let room = rooms[socket.roomId];
-		if(room && room.sockets.length == 2){
-			if(room.sockets[0].isReady && room.sockets[1].isReady){
-				let x = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
-				let y = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
-				let out = JSON.stringify({velocityX: x, velocityY: y});
-				console.log(`game start: ${out}`);
-				io.to(room.id).emit('gameStart', out);
+		setTimeout(() => {
+			socket.isReady = true;
+			let room = rooms[socket.roomId];
+			if(room && room.sockets.length == 2){
+				if(room.sockets[0].isReady && room.sockets[1].isReady){
+					let x = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
+					let y = Math.floor(Math.random() * 2) == 0 ? 200 : -200;
+					let out = JSON.stringify({velocityX: x, velocityY: y});
+					console.log(`game start: ${out}`);
+					io.to(room.id).emit('gameStart', out);
+				}
 			}
-		}
+		}, timeout);
 
 	});
 
+	
 	socket.on('sendPlayerData', (data) => {
 		let room = rooms[socket.roomId];
 		if(room){

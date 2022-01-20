@@ -157,22 +157,34 @@ class Pong extends Phaser.Scene{
         this.syncFrame = INITIAL_FRAME;
         this.remoteFrameAdvantage = 0;
         this.opponentInput = {up: false, down: false};
-        this.gameStateContainer = [];
+        this.gameStateContainer = new GameStateContainer();
+        this.currentInput = {up: false, down: false};
 
         socket.on('getRollbackData', (d) => {
         	let data = JSON.parse(d);
         	this.remoteFrame = data.frame;
         	this.remoteFrameAdvantage = data.advantage;
+
+        	this.gameStateContainer.checkOpponentInfo(data.frame, {
+        		up: data.up,
+        		down: data.down
+        	});
+
+        	/*
         	if(this.gameStateContainer.length !== 0){
 	        	let gameState = this.getGameStateByFrame(data.frame);
 	        	if(gameState){
 	        		let input = gameState.opponentInput;
 		        	if(input.up !== data.up || input.down !== data.down){
-		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput = {up: data.up, down: data.down};
+		        		console.log('gamestate Rewrote');
+		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput.up = data.up;
+		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput.down = data.down;
 		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].predictionWrong = true;
+		        		console.log(this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput);
 		        	}
 	        	}
         	}
+        	*/
         	//this.opponentInput = {up: data.up, down: data.down};
         });
 
@@ -200,11 +212,17 @@ class Pong extends Phaser.Scene{
 
 
 		// rollback netcode update function
-		// need to reinitialize all variables to make it more determinestic? 
+		if(this.localFrame < 200)
+			console.log(`localFrame: ${this.localFrame} player: ${this.controllerPlayer.y} opponent: ${this.opponentPlayer.y}`);
+
+		// Update Network Variables
+		let updateRemoteFrame = this.remoteFrame;
+		let updateRemoteFrameAdvantage = this.remoteFrameAdvantage;
+		this.currentInput = {up: this.cursors.up.isDown, down: this.cursors.down.isDown};
 
         // [Update Synchronization]
-        let finalFrame = this.remoteFrame;
-        if(this.remoteFrame > this.localFrame){
+        let finalFrame = updateRemoteFrame;
+        if(updateRemoteFrame > this.localFrame){
         	finalFrame = this.localFrame;
         }
     	//let found = false;
@@ -212,7 +230,7 @@ class Pong extends Phaser.Scene{
     	/* Find the first frame where the predicted inputs do not match the
     	 * actual inputs
     	 */
-    	let foundFrame = this.getFirstWrongPrediction();
+    	let foundFrame = this.gameStateContainer.getFirstPredictedWrong(this.syncFrame);
     	if(foundFrame){
     		this.syncFrame = foundFrame - 1;
     	} else {
@@ -221,39 +239,34 @@ class Pong extends Phaser.Scene{
         
 
         // [Rollback]
-        if(this.localFrame > this.syncFrame && this.remoteFrame > this.syncFrame){
-        	console.log(`rollback:${this.syncFrame}`);
+        if(this.localFrame > this.syncFrame && updateRemoteFrame > this.syncFrame){
         	// [restoreGameState]
         	this.restoreGameState(); //restore game to syncFrame
         	// select inputs from this.syncFrame + 1 from localFrame
-
+        	// improvement can be made to simulte input
         	// [Rollback update]
         	this.simulateInputs();
         	this.updateGame();
         	this.storeGameState();
+        	console.log('rollback!');
         } 
 
 		//[time synced]
-		let localFrameAdvantage = this.localFrame - this.remoteFrame;
-		let frameAdvantageDiff = localFrameAdvantage - this.remoteFrameAdvantage;
+		let localFrameAdvantage = this.localFrame - updateRemoteFrame;
+		let frameAdvantageDiff = localFrameAdvantage - updateRemoteFrameAdvantage;
 		if(localFrameAdvantage < MAX_ROLLBACK_FRAMES && frameAdvantageDiff <= FRAME_ADVANTAGE_LIMIT){
 			this.localFrame++;
-			console.log(`time synced ${this.syncFrame}`);
 			let rollbackData = JSON.stringify({
 				frame: this.localFrame,
-				advantage: this.localFrame - this.remoteFrame,
-				up: this.cursors.up.isDown,
-				down: this.cursors.down.isDown
+				advantage: this.localFrame - updateRemoteFrame,
+				up: this.currentInput.up,
+				down: this.currentInput.down
 			});
 			socket.emit('sendPlayerDataRollback', rollbackData);
 			this.simulateInputs();
 			this.updateGame();
 			this.storeGameState();
 		}
-
-		console.log(`localFrame: ${this.localFrame} \n
-			remoteFrame: ${this.remoteFrame} \n
-			syncFrame: ${this.syncFrame}`);
 		
     }
     
@@ -275,8 +288,9 @@ class Pong extends Phaser.Scene{
     getFirstWrongPrediction(){
 
     	for(let gameState of this.gameStateContainer){
-    		if(gameState.predictionWrong)
+    		if(gameState.predictionWrong){
     			return gameState.frame;
+    		}
     	}
 
     	return undefined;
@@ -295,23 +309,28 @@ class Pong extends Phaser.Scene{
 
     restoreGameState(){
     	// restore game to this.syncFrame and remove unnessary junk from gameStateContainer
-    	let count = 0;
+    	/*
+    	let keepGameState;
     	for(let gameState of this.gameStateContainer){
-    		if(gameState.frame < this.syncFrame)
-    			count++;
-    		else if(gameState.frame === this.syncFrame){
+    		if(gameState.frame === this.syncFrame){
     			this.applyGameState(gameState);
+    			keepGameState = Object.assign({}, gameState);
     		}
     	}
-    	for(let i = 0; i < count; i++){
-    		this.gameStateContainer.shift();
-    	}
-    	console.log(`check: ${this.getGameStateByFrame(this.syncFrame)}`);
+    	
+    	this.gameStateContainer.splice(0, this.gameStateContainer.length);
+    	this.gameStateContainer.push(keepGameState);
+		*/
+		if(this.gameStateContainer.has(this.syncFrame))
+    		this.applyGameState(this.gameStateContainer.get(this.syncFrame));
     }
 
     applyGameState(gameState){
     	this.localFrame = gameState.frame;
-    	this.opponentInput = gameState.opponentInput;
+    	this.currentInput.up = gameState.playerInput.up
+    	this.currentInput.down = gameState.playerInput.down
+    	this.opponentInput.up = gameState.opponentInput.up;
+    	this.opponentInput.down = gameState.opponentInput.down;
     	this.ball.x = gameState.ball.x;
     	this.ball.y = gameState.ball.y;
     	this.ball.body.velocity.x = gameState.ball.velocityX;
@@ -324,11 +343,23 @@ class Pong extends Phaser.Scene{
 
     simulateInputs(){
     	// get opponent input of localFrame - 1 and apply it to localFrame
+    	/*
     	if(this.gameStateContainer.length > 0){
-    		let gameState = this.getGameStateByFrame(this.localFrame - 1);
+    		let gameState = this.getGameStateByFrame(this.localFrame);
     		if(gameState){
-    			this.opponentInput = gameState.opponentInput;
+    			this.opponentInput.up = gameState.opponentInput.up;
+    			this.opponentInput.down = gameState.opponentInput.down;
+    			this.currentInput.up = this.cursors.up.isDown;
+    			this.currentInput.down = this.cursors.down.isDown;
     		}
+    	}*/
+
+    	if(this.gameStateContainer.has(this.localFrame)){
+    		let gameState = this.gameStateContainer.get(this.localFrame);
+    		this.opponentInput.up = gameState.opponentInput.up;
+			this.opponentInput.down = gameState.opponentInput.down;
+			this.currentInput.up = this.cursors.up.isDown;
+			this.currentInput.down = this.cursors.down.isDown;
     	}
 
     }
@@ -336,34 +367,60 @@ class Pong extends Phaser.Scene{
     updateGame(){
     	// not correct 
     	// update: wait this might be correct
-    	if(this.cursors.up.isDown && this.controllerPlayer.y > 50){
+    	if(this.currentInput.up && this.controllerPlayer.y > 50){
             this.controllerPlayer.y += -10;
-        } else if(this.cursors.down.isDown && this.controllerPlayer.y < 350){
+        }
+        if(this.currentInput.down && this.controllerPlayer.y < 350){
             this.controllerPlayer.y += 10;
         }
 
+        //console.log(this.opponentInput);
         if(this.opponentInput.up && this.opponentPlayer.y > 50){
         	this.opponentPlayer.y += -10;
-        } else if(this.opponentInput.down && this.opponentPlayer.y < 350){
+        }
+        if(this.opponentInput.down && this.opponentPlayer.y < 350){
         	this.opponentPlayer.y += 10;
         }
 
     }
 
     storeGameState(){
-    	this.gameStateContainer.push({
-    		frame: this.localFrame,
-    		playerInput: {up: this.cursors.up.isDown, down: this.cursors.down.isDown},
-    		opponentInput: this.opponentInput,
-    		ball: {
-    			x: this.ball.x, y: this.ball.y, 
-    			velocityX: this.ball.body.velocity.x,
-    			velocityY: this.ball.body.velocity.y
-    		},
-    		player1Position: {x: this.player1.x, y: this.player1.y},
-    		player2Position: {x: this.player2.x, y: this.player2.y},
-    		predictionWrong: false
-    	});
+
+    	if(!this.gameStateContainer.has(this.localFrame)){
+
+			this.gameStateContainer.set(this.localFrame, {
+				frame: this.localFrame,
+				playerInput: Object.assign({}, this.currentInput),
+				opponentInput: Object.assign({}, this.opponentInput),
+				ball: {
+					x: this.ball.x, y: this.ball.y, 
+					velocityX: this.ball.body.velocity.x,
+					velocityY: this.ball.body.velocity.y
+				},
+				player1Position: {x: this.player1.x, y: this.player1.y},
+				player2Position: {x: this.player2.x, y: this.player2.y},
+				predictionWrong: false,
+				predicted: true
+			});
+
+    	} else {
+
+    		let gameState = this.gameStateContainer.get(this.localFrame);
+    		gameState.playerInput = Object.assign({}, this.currentInput);
+    		gameState.opponentInput = Object.assign({}, this.opponentInput);
+			gameState.ball = {
+				x: this.ball.x, y: this.ball.y, 
+				velocityX: this.ball.body.velocity.x,
+				velocityY: this.ball.body.velocity.y
+			};
+			gameState.player1Position = {x: this.player1.x, y: this.player1.y};
+			gameState.player2Position = {x: this.player2.x, y: this.player2.y};
+			gameState.predictionWrong = false;
+			gameState.predicted = true;
+
+			this.gameStateContainer.set(this.localFrame, gameState);
+
+    	}
 
     	/*
     	if(this.gameStateContainer.length > MAX_ROLLBACK_FRAMES){
