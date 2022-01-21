@@ -35,6 +35,10 @@ class Pong extends Phaser.Scene{
         this.player2.body.setImmovable();
         this.player2.body.collideWorldBounds = true;
 
+        // arcade physics needs to be abandoned to make the game more deterministic\
+        /*
+         * 
+         */
         this.ball.body.bounce.x = 1;
         this.ball.body.bounce.y = 1;
         this.ball.body.collideWorldBounds = true;
@@ -43,6 +47,12 @@ class Pong extends Phaser.Scene{
 
         
         let startGame = (data) => {
+        	/*
+        	 * needs to be changed to only choose the direction of the ball and not the
+        	 * velocity. The movement of the ball must be calculated manually in update()
+        	 * in order keep the game's determinism in order for the rollback to work
+        	 * properly
+        	 */
         	console.log('startGamecalled');
 			let dataObj = JSON.parse(data);
 			this.ball.body.velocity.x = dataObj.velocityX;
@@ -69,7 +79,7 @@ class Pong extends Phaser.Scene{
 	                }));
 	            }
 		    } else {		
-		    	/*
+		    	/* //keep this to think about how to re-initiate game after one player loses
 				if(host && left){
 					this.stopGame();
 					this.score.player2++;
@@ -100,16 +110,10 @@ class Pong extends Phaser.Scene{
             this.ball.body.velocity.y = this.getRandomVelocity(200);
         }
 
+
+        // future need to remove collider and manually calculate collision and bounce
         this.physics.add.collider(this.controllerPlayer, this.ball, () => {
-        	/*
-			let sendData = JSON.stringify({
-				x: this.ball.x,
-				y: this.ball.y,
-				velocityX: this.ball.body.velocity.x,
-				velocityY: this.ball.body.velocity.y
-			});
-			socket.emit('sendPlayerCollision' + DEBUG, sendData);
-			*/
+
         }, null, this);
 
         this.physics.add.collider(this.opponentPlayer, this.ball, () => {
@@ -170,22 +174,6 @@ class Pong extends Phaser.Scene{
         		down: data.down
         	});
 
-        	/*
-        	if(this.gameStateContainer.length !== 0){
-	        	let gameState = this.getGameStateByFrame(data.frame);
-	        	if(gameState){
-	        		let input = gameState.opponentInput;
-		        	if(input.up !== data.up || input.down !== data.down){
-		        		console.log('gamestate Rewrote');
-		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput.up = data.up;
-		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput.down = data.down;
-		        		this.gameStateContainer[this.getIndexByFrame(gameState.frame)].predictionWrong = true;
-		        		console.log(this.gameStateContainer[this.getIndexByFrame(gameState.frame)].opponentInput);
-		        	}
-	        	}
-        	}
-        	*/
-        	//this.opponentInput = {up: data.up, down: data.down};
         });
 
         this.scene.pause();
@@ -194,22 +182,6 @@ class Pong extends Phaser.Scene{
     }
 
     update(){
-    	// delay netcode update function
-    	/*
-        if (this.cursors.up.isDown && this.controllerPlayer.y > 50){
-            this.controllerPlayer.y += -10;
-        } else if (this.cursors.down.isDown && this.controllerPlayer.y < 350){
-            this.controllerPlayer.y += 10;
-
-        } else {
-            //this.controllerPlayer.body.velocity.y = 0;
-        }
-
-		let data = JSON.stringify({ y: this.controllerPlayer.y
-		});
-		socket.emit('sendPlayerData' + DEBUG, data);
-		*/
-
 
 		// rollback netcode update function
 		if(this.localFrame < 200)
@@ -308,19 +280,7 @@ class Pong extends Phaser.Scene{
     }
 
     restoreGameState(){
-    	// restore game to this.syncFrame and remove unnessary junk from gameStateContainer
-    	/*
-    	let keepGameState;
-    	for(let gameState of this.gameStateContainer){
-    		if(gameState.frame === this.syncFrame){
-    			this.applyGameState(gameState);
-    			keepGameState = Object.assign({}, gameState);
-    		}
-    	}
-    	
-    	this.gameStateContainer.splice(0, this.gameStateContainer.length);
-    	this.gameStateContainer.push(keepGameState);
-		*/
+
 		if(this.gameStateContainer.has(this.syncFrame))
     		this.applyGameState(this.gameStateContainer.get(this.syncFrame));
     }
@@ -342,17 +302,6 @@ class Pong extends Phaser.Scene{
     }
 
     simulateInputs(){
-    	// get opponent input of localFrame - 1 and apply it to localFrame
-    	/*
-    	if(this.gameStateContainer.length > 0){
-    		let gameState = this.getGameStateByFrame(this.localFrame);
-    		if(gameState){
-    			this.opponentInput.up = gameState.opponentInput.up;
-    			this.opponentInput.down = gameState.opponentInput.down;
-    			this.currentInput.up = this.cursors.up.isDown;
-    			this.currentInput.down = this.cursors.down.isDown;
-    		}
-    	}*/
 
     	if(this.gameStateContainer.has(this.localFrame)){
     		let gameState = this.gameStateContainer.get(this.localFrame);
@@ -365,8 +314,7 @@ class Pong extends Phaser.Scene{
     }
 
     updateGame(){
-    	// not correct 
-    	// update: wait this might be correct
+
     	if(this.currentInput.up && this.controllerPlayer.y > 50){
             this.controllerPlayer.y += -10;
         }
@@ -381,6 +329,11 @@ class Pong extends Phaser.Scene{
         if(this.opponentInput.down && this.opponentPlayer.y < 350){
         	this.opponentPlayer.y += 10;
         }
+
+        /*[Calculate ball movement]
+         *	calculate the movement of the ball
+         *		also calculate the vector of the next movement
+         */
 
     }
 
@@ -421,11 +374,6 @@ class Pong extends Phaser.Scene{
 			this.gameStateContainer.set(this.localFrame, gameState);
 
     	}
-
-    	/*
-    	if(this.gameStateContainer.length > MAX_ROLLBACK_FRAMES){
-    		this.gameStateContainer.shift();
-    	}*/
     }
 
 }
