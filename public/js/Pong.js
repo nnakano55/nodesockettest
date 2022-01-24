@@ -26,6 +26,7 @@ class Pong extends Phaser.Scene{
         this.ball = this.add.rectangle(400, 200, 20, 20, 0xffffff);
         this.score = {player1: 0, player2:0};
 
+        /* this entire statement must be deprecated up until //DEL DEPRECATED
         this.physics.add.existing(this.player1);
         this.physics.add.existing(this.player2);
         this.physics.add.existing(this.ball);
@@ -35,16 +36,20 @@ class Pong extends Phaser.Scene{
         this.player2.body.setImmovable();
         this.player2.body.collideWorldBounds = true;
 
+        //DEL*/
+
         // arcade physics needs to be abandoned to make the game more deterministic\
-        /*
+        /* DEPRECATED
          * 
-         */
+        
         this.ball.body.bounce.x = 1;
         this.ball.body.bounce.y = 1;
         this.ball.body.collideWorldBounds = true;
         this.ball.body.onWorldBounds = true;
+        //*/
 
-
+        this.ballSpeed = 10;
+        this.ballVector = {x: 0, y: 0};
         
         let startGame = (data) => {
         	/*
@@ -55,11 +60,17 @@ class Pong extends Phaser.Scene{
         	 */
         	console.log('startGamecalled');
 			let dataObj = JSON.parse(data);
+			/* // deprecated arcade physics
 			this.ball.body.velocity.x = dataObj.velocityX;
 			this.ball.body.velocity.y = dataObj.velocityY;
+			//*/
+
+			this.ballVector.x = dataObj.velocityX > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+			this.ballVector.y = dataObj.velocityY > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+
 			this.scene.resume();
         };
-
+        /* DEPRECATED
         this.ball.body.world.on('worldbounds', (body, up, down, left, right) => {
 
 	        if(!multiplayer){
@@ -79,7 +90,7 @@ class Pong extends Phaser.Scene{
 	                }));
 	            }
 		    } else {		
-		    	/* //keep this to think about how to re-initiate game after one player loses
+		    	//keep this to think about how to re-initiate game after one player loses
 				if(host && left){
 					this.stopGame();
 					this.score.player2++;
@@ -91,11 +102,11 @@ class Pong extends Phaser.Scene{
 					socket.emit('sendPlayerLoss' + DEBUG);
 					socket.emit('initiateGame' + DEBUG);	
 				} 
-				*/
+				
 		    }
 
         }); // End on - worldbounds 
-
+		*/
         if(multiplayer){
 			if(host){
 				this.controllerPlayer = this.player1;
@@ -112,6 +123,7 @@ class Pong extends Phaser.Scene{
 
 
         // future need to remove collider and manually calculate collision and bounce
+        /* DEPRECATED
         this.physics.add.collider(this.controllerPlayer, this.ball, () => {
 
         }, null, this);
@@ -119,7 +131,8 @@ class Pong extends Phaser.Scene{
         this.physics.add.collider(this.opponentPlayer, this.ball, () => {
         	// when opponent collided
         }, null, this);1
-	
+		*/
+
 		socket.on('gameStart', startGame);
 
 		socket.on('receiveOpponentLoss', () => {
@@ -234,7 +247,7 @@ class Pong extends Phaser.Scene{
 				up: this.currentInput.up,
 				down: this.currentInput.down
 			});
-			socket.emit('sendPlayerDataRollback', rollbackData);
+			socket.emit('sendPlayerDataRollback' + DEBUG, rollbackData);
 			this.simulateInputs();
 			this.updateGame();
 			this.storeGameState();
@@ -293,8 +306,8 @@ class Pong extends Phaser.Scene{
     	this.opponentInput.down = gameState.opponentInput.down;
     	this.ball.x = gameState.ball.x;
     	this.ball.y = gameState.ball.y;
-    	this.ball.body.velocity.x = gameState.ball.velocityX;
-    	this.ball.body.velocity.y = gameState.ball.velocityY;
+    	this.ballVector.x = gameState.ball.vector.x;
+    	this.ballVector.y = gameState.ball.vector.y;
     	this.player1.x = gameState.player1Position.x;
     	this.player1.y = gameState.player1Position.y;
     	this.player2.x = gameState.player2Position.x;
@@ -303,12 +316,16 @@ class Pong extends Phaser.Scene{
 
     simulateInputs(){
 
+    	this.currentInput.up = this.cursors.up.isDown;
+		this.currentInput.down = this.cursors.down.isDown;
     	if(this.gameStateContainer.has(this.localFrame)){
     		let gameState = this.gameStateContainer.get(this.localFrame);
     		this.opponentInput.up = gameState.opponentInput.up;
 			this.opponentInput.down = gameState.opponentInput.down;
-			this.currentInput.up = this.cursors.up.isDown;
-			this.currentInput.down = this.cursors.down.isDown;
+    	} else if(this.gameStateContainer.has(this.syncFrame)) {
+			let gameState = this.gameStateContainer.get(this.syncFrame);
+    		this.opponentInput.up = gameState.opponentInput.up;
+			this.opponentInput.down = gameState.opponentInput.down;    		
     	}
 
     }
@@ -335,10 +352,71 @@ class Pong extends Phaser.Scene{
          *		also calculate the vector of the next movement
          */
 
+         // move ball
+         this.ball.x += this.ballVector.x;
+         this.ball.y += this.ballVector.y;
+
+         if(this.ball.x <= 0){
+         	//player1 loses
+         } else if(this.ballx >= 800) {
+         	//player2 loses
+         }
+
+         // Player 1 collision box
+         let leftPlayer1 = this.player1.x - 10;
+         let rightPlayer1 = this.player1.x + 10;
+         let topPlayer1 = this.player1.y - 50;
+         let bottomPlayer1 = this.player1.y + 50;
+
+         // Player 2 collision box
+         let leftPlayer2 = this.player2.x - 10;
+         let rightPlayer2 = this.player2.x + 10;
+         let topPlayer2 = this.player2.y - 50;
+         let bottomPlayer2 = this.player2.y + 50;
+
+         // Ball collision box
+         let leftBall = this.ball.x - 10;
+         let rightBall = this.ball.x + 10;
+         let topBall = this.ball.y - 10;
+         let bottomBall = this.ball.y + 10;
+
+         // Ball after simulated vector motion
+         let leftBallVect = leftBall + this.ballVector.x;
+         let rightBallVect = rightBall + this.ballVector.x;
+         let topBallVect = topBall + this.ballVector.y;
+         let bottomBallVect = bottomBall + this.ballVector.y;
+
+         // Check future collision to calculate vector direction
+         if( // player 1 & ball
+         	leftBallVect < rightPlayer1 && rightBallVect > leftPlayer1 &&
+         	topBallVect < bottomPlayer1 && bottomBallVect > topPlayer1
+         ){
+         	//check future collision direction player1
+         	if(leftBall >= rightPlayer1 || rightBall <= leftPlayer1)
+         		this.ballVector.x *= -1;
+         	if(topBall >= bottomPlayer1 || bottomBall <= topPlayer1)
+         		this.ballVector.y *= -1;
+         } else if ( // player 2 & ball
+         	leftBallVect < rightPlayer2 && rightBallVect > leftPlayer2 &&
+         	topBallVect < bottomPlayer2 && bottomBallVect > topPlayer2
+         ){
+         	//check future collision direction player2
+         	if(leftBall >= rightPlayer2 || rightBall <= leftPlayer2)
+         		this.ballVector.x *= -1;
+         	if(topBall >= bottomPlayer2 || bottomBall <= topPlayer2)
+         		this.ballVector.y *= -1;
+         } else if(topBallVect < 0 || bottomBallVect > 400){
+         	// collision with vertical world bound
+         	this.ballVector.y *= -1;
+         } else if(leftBallVect < 0 || rightBallVect > 800){
+         	// placeholder for debugging, unnessesary to finialized game
+         	this.ballVector.x *= -1;
+         }
+
     }
 
     storeGameState(){
-
+    	// update to work with new collision logic
     	if(!this.gameStateContainer.has(this.localFrame)){
 
 			this.gameStateContainer.set(this.localFrame, {
@@ -347,8 +425,7 @@ class Pong extends Phaser.Scene{
 				opponentInput: Object.assign({}, this.opponentInput),
 				ball: {
 					x: this.ball.x, y: this.ball.y, 
-					velocityX: this.ball.body.velocity.x,
-					velocityY: this.ball.body.velocity.y
+					vector: Object.assign({}, this.ballVector)
 				},
 				player1Position: {x: this.player1.x, y: this.player1.y},
 				player2Position: {x: this.player2.x, y: this.player2.y},
@@ -363,8 +440,7 @@ class Pong extends Phaser.Scene{
     		gameState.opponentInput = Object.assign({}, this.opponentInput);
 			gameState.ball = {
 				x: this.ball.x, y: this.ball.y, 
-				velocityX: this.ball.body.velocity.x,
-				velocityY: this.ball.body.velocity.y
+				vector: Object.assign({}, this.ballVector)
 			};
 			gameState.player1Position = {x: this.player1.x, y: this.player1.y};
 			gameState.player2Position = {x: this.player2.x, y: this.player2.y};

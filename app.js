@@ -51,7 +51,7 @@ io.on('connection', (socket) => {
 	socket.on('sendPlayerDataRollback', (data) => {
 		
 		let room = rooms[socket.roomId];
-		if(room){
+		if(room && room.sockets.length == 2){
 			if(socket.isHost){
 				io.to(room.sockets[1].id).emit('getRollbackData', data);
 			} else {
