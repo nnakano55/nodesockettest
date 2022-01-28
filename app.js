@@ -11,7 +11,7 @@ const io = new Server(server);
 
 const rooms = {};
 
-const timeout = 100;
+const timeout = 50;
 
 const joinRoom = (socket, room) => {
 	room.sockets.push(socket);
@@ -36,11 +36,11 @@ const opponentId = (socket, room) => {
 };
 
 app.use(express.static(path.join(__dirname, 'public')));
-
+/*
 app.get('/', (req, res) => {
 	res.send('root');
 });
-
+*/
 io.on('connection', (socket) => {
 	
 	console.log('a user connected: ', socket.id);
@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
 	socket.on('sendPlayerDataRollbackDEBUG', (data) => {
 		setTimeout(() => {
 			let room = rooms[socket.roomId];
-			if(room){
+			if(room && room.sockets.length == 2){
 				if(socket.isHost){
 					io.to(room.sockets[1].id).emit('getRollbackData', data);
 				} else {
