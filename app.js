@@ -11,7 +11,7 @@ const io = new Server(server);
 
 const rooms = {};
 
-const timeout = 50;
+const timeout = 100;
 
 const joinRoom = (socket, room) => {
 	room.sockets.push(socket);
