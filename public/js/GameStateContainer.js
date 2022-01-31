@@ -5,7 +5,8 @@ class GameStateContainer extends Map{
 	}
 
 	checkOpponentInfo(frame, inputs){
-
+		// updates the inputs for the frame if the gamestate already exists
+		// if it doesn't, it creates a new temporary gamestate
 		if(this.has(frame)){
 			let gameState = this.get(frame);
 			let stateInput = gameState.opponentInput;

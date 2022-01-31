@@ -86,6 +86,8 @@ io.on('connection', (socket) => {
 					let out = JSON.stringify({velocityX: x, velocityY: y});
 					console.log(`game start: ${out}`);
 					io.to(room.id).emit('gameStart', out);
+					room.sockets[0].isReady = false;
+					room.sockets[1].isReady = false;
 				}
 			}
 		}, timeout);
@@ -120,9 +122,9 @@ io.on('connection', (socket) => {
 		socket.isReady = false;
 		if(room){
 			if(socket.isHost){
-				io.to(room.sockets[1].id).emit('receiveOpponentLoss');
+				io.to(room.sockets[1].id).emit('getOpponentLoss');
 			} else {
-				io.to(room.sockets[0].id).emit('receiveOpponentLoss');
+				io.to(room.sockets[0].id).emit('getOpponentLoss');
 			}
 		}
 	});

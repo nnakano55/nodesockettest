@@ -1,8 +1,32 @@
+/* PongScene
+ *	pong scene that is designed for multiplayer with rollback netcode
+ * 	01/29/2022 - currently the game is mostly done, there are a couple of functionalities
+ *		that should be added to make the game more polished to be published
+ * 	Current to-dos:
+ *		-Make a UI that shows the current player score constantly throughout the match
+ *		-Make an animation that shows at the begininng of the game and when either player
+ *		scores a point
+ *		-Set up a system that determines when the game ends and also make the entire game
+ *		able to backtrack to the title screen whenever the player wants to 
+ * 		-Replace portions of the code(the imported frameworks) with their respected cloud
+ * 		URL
+ *		-Make sure the game is very easily adapted to single player mode
+ * 			* make it clear which portions of the code could be reused and think about
+ *			how to replace it. Class inheritance is probably not a good idea
+ *		-Make constants for game window size and such other variables
+ *		-Make the gamestate information more compact?
+ *			* create a function that converts gameStateContainer into a more compact data structure
+ *			* create a funciton that converts the compact data into gameStateContainer
+ * 
+ */
+
 
 // rollback constants
 const MAX_ROLLBACK_FRAMES = 60;
 const FRAME_ADVANTAGE_LIMIT = 60;
 const INITIAL_FRAME = 0;
+const BALL_SPEED = 10;
+
 
 class Pong extends Phaser.Scene{
     
@@ -15,10 +39,10 @@ class Pong extends Phaser.Scene{
     }
 
     create(){
-
     	// init world objects
         this.physics.world.setFPS(60);
 
+        this.gameActive = false;
         this.cursors = this.input.keyboard.createCursorKeys();
         
 		this.controllerPlayer;
@@ -29,41 +53,8 @@ class Pong extends Phaser.Scene{
         this.ball = this.add.rectangle(400, 200, 20, 20, 0xffffff);
         this.score = {player1: 0, player2:0};
 
-        this.ballSpeed = 10;
+        this.ballSpeed = BALL_SPEED;
         this.ballVector = {x: 0, y: 0};
-
-        // check which side the player will control
-        if(multiplayer){
-			if(host){
-				this.controllerPlayer = this.player1;
-				this.opponentPlayer = this.player2;
-			} else {
-				this.controllerPlayer = this.player2;
-				this.opponentPlayer = this.player1;
-			}
-        } else {
-            this.controllerPlayer = this.player1;
-            this.ball.body.velocity.x = this.getRandomVelocity(200);
-            this.ball.body.velocity.y = this.getRandomVelocity(200);
-        }
-
-		socket.on('gameStart', (data) => {
-
-        	console.log('startGamecalled');
-			let dataObj = JSON.parse(data);
-
-			this.ballVector.x = dataObj.velocityX > 0 ? this.ballSpeed : -1 * this.ballSpeed;
-			this.ballVector.y = dataObj.velocityY > 0 ? this.ballSpeed : -1 * this.ballSpeed;
-
-			this.scene.resume();
-
-        });
-
-		socket.on('disconnected', () => {
-			socket.emit('leaveRoom', () => {
-				this.scene.start('SceneMain');	
-			});
-		});
 
         // set up for rollback netcode
         this.localFrame = INITIAL_FRAME;
@@ -73,6 +64,61 @@ class Pong extends Phaser.Scene{
         this.opponentInput = {up: false, down: false};
         this.currentInput = {up: false, down: false};
         this.gameStateContainer = new GameStateContainer();
+
+        this.score1Text = this.add.text(
+            config.width / 2 - 200, 
+            config.height / 2, 
+            `${this.score.player1}`,
+            {fill:'#FFFFFF', fontSize: '128px', fontFamily:'Arial'}
+        );
+        this.score1Text.setOrigin(0.5);
+        this.score1Text.alpha = 0.0;
+        console.log(this.score1Text.x);
+
+    	this.score2Text = this.add.text(
+            config.width / 2 + 200, 
+            config.height / 2, 
+            `${this.score.player2}`,
+            {fill:'#FFFFFF', fontSize: '128px', fontFamily:'Arial'}
+        ).setOrigin(0.5);
+    	this.score2Text.alpha = 0.0;
+
+    	this.dashText = this.add.rectangle(config.width / 2, config.height / 2, 120, 25, 0xffffff);
+    	this.dashText.alpha = 0.0;
+
+    	this.goText = this.add.text(
+            config.width / 2,
+            config.height / 2, 
+            `GO`,
+            {fill:'#FFFFFF', fontSize: '400px', fontFamily:'Arial'}
+        ).setOrigin(0.5);
+        this.goText.alpha = 0.0;
+
+        // check which side the player will control
+		if(host){
+			this.controllerPlayer = this.player1;
+			this.opponentPlayer = this.player2;
+		} else {
+			this.controllerPlayer = this.player2;
+			this.opponentPlayer = this.player1;
+		}
+
+		// init socket emitters
+		socket.on('gameStart', (data) => {
+
+        	console.log('startGamecalled');
+			let dataObj = JSON.parse(data);
+
+			this.ballVector.x = dataObj.velocityX > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+			this.ballVector.y = dataObj.velocityY > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+			this.gameActive = true;
+        });
+
+		socket.on('disconnected', () => {
+			socket.emit('leaveRoom', () => {
+				this.scene.start('SceneMain');	
+			});
+		});
 
         socket.on('getRollbackData', (d) => {
         	let data = JSON.parse(d);
@@ -86,13 +132,87 @@ class Pong extends Phaser.Scene{
 
         });
 
-        this.scene.pause();
-        socket.emit('initiateGame');
+        socket.on('getOpponentLoss', () => {
+        	// [update score]
+        	this.gameActive = false;
+        	this.resetGameState();
+    		this.gameStateContainer.clear();
+    		this.playerWins();
+    		console.log(this.score);
+    		this.scoreTweenAnimate();
+        });
+
+   		// stop scene until the game is properly initiated
+   		this.scoreTweenAnimate();
+    	
+    }
+
+    scoreTweenAnimate(){
+    	console.log('called tween animation');
+    	let _this = this; // to reference this class inside the tween object
+    	this.score1Text.setText(`${this.score.player1}`);
+    	console.log(this.score1Text.x);
+    	this.score2Text.setText(`${this.score.player2}`);
+		this.score1Text.alpha = 1.0;
+		this.score2Text.alpha = 1.0;
+		this.dashText.alpha = 1.0;
+
+	    const origX1 = this.score1Text.x;
+	    const origX2 = this.score2Text.x;
+	    const hypotenuse1 = this.score1Text.x - config.width/2;
+	    const hypotenuse2 = this.score2Text.x - config.width/2;
+	    let spinTween = this.tweens.addCounter({
+	        from: 0,
+	        to: 4 * Math.PI,
+	        repeat: 0,
+	       	ease: 'Quart.easeInOut',
+	        onUpdate: (tween) => {
+	            //  tween.getValue = range between 0 and 360
+	            let angle = tween.getValue() * (180 / Math.PI);
+	            _this.score1Text.angle = angle;
+	            _this.score2Text.angle = angle;
+	            _this.dashText.angle = angle * -1;
+	            let adjacent = hypotenuse1 * Math.cos(tween.getValue());
+	            let opposite = hypotenuse1 * Math.sin(tween.getValue());
+	            _this.score1Text.x = config.width/2 + adjacent;
+	            _this.score1Text.y = config.height/2 + opposite;
+	            adjacent = hypotenuse2 * Math.cos(tween.getValue());
+	            opposite = hypotenuse2 * Math.sin(tween.getValue());
+	            _this.score2Text.x = config.width/2 + adjacent;
+	            _this.score2Text.y = config.height/2 + opposite;
+	        },
+	        onComplete: () => {
+	        	let alphaTween = _this.tweens.add({
+	        		targets: [_this.score1Text, _this.score2Text, _this.dashText],
+	        		alpha: 0.0,
+	        		duration: 200,
+	        		repeat: 0,
+	        		onComplete: () => {
+	        			_this.score1Text.angle = 0;
+	        			_this.score1Text.x = origX1;
+			            _this.score2Text.angle = 0;
+			            _this.score2Text.x = origX2;
+			            _this.dashText.angle = 0;
+			        	_this.goText.alpha = 1.0;
+	        			_this.tweens.add({
+	        				targets: _this.goText,
+	        				alpha: 0.0,
+	        				delay: 300,
+	        				duration: 200,
+	        				repeat: 0,
+	        				onComplete: () => {socket.emit('initiateGame');}
+	        			});
+	        		}
+	        	});
+	        }
+    	});
 
     }
 
     update(){
-
+    	if(!this.gameActive)
+    		return;
+    	console.log(this.localFrame);
 		// Update Network Variables
 		let updateRemoteFrame = this.remoteFrame;
 		let updateRemoteFrameAdvantage = this.remoteFrameAdvantage;
@@ -104,6 +224,7 @@ class Pong extends Phaser.Scene{
         	finalFrame = this.localFrame;
         }
 
+        // [Set sync frame]
     	let foundFrame = this.gameStateContainer.getFirstPredictedWrong(this.syncFrame);
     	if(foundFrame){
     		this.syncFrame = foundFrame - 1;
@@ -120,7 +241,7 @@ class Pong extends Phaser.Scene{
         	// [Rollback update]
         	this.simulateInputs();
         	// it said do this on the pseudo code but that is a lie 
-        	//this.updateGame(); 
+        	//this.updateGame(); // don't do this, I don't know why the pseudocode wants me to do this
         	this.storeGameState();
         	console.log('rollback!');
         } 
@@ -136,7 +257,7 @@ class Pong extends Phaser.Scene{
 				up: this.currentInput.up,
 				down: this.currentInput.down
 			});
-			socket.emit('sendPlayerDataRollback' + DEBUG, rollbackData);
+			socket.emit('sendPlayerDataRollback', rollbackData);
 			this.simulateInputs();
 			this.updateGame();
 			this.storeGameState();
@@ -146,6 +267,26 @@ class Pong extends Phaser.Scene{
 
     getRandomVelocity(orig){
 		return Math.floor(Math.random() * 2) === 0 ? orig : orig * -1;
+    }
+
+
+    resetGameState(){
+    	let gameState = {
+    		frame: INITIAL_FRAME,
+    		playerInput: {up: false, down: false},
+    		opponentInput: {up: false, down: false},
+    		ball: {
+    			x: 400, y: 200,
+    			vector: {x: 0, y: 0}
+    		},
+    		player1Position: {x: 50, y: 200},
+    		player2Position: {x: 750, y: 200}
+    	}
+    	this.localFrame = INITIAL_FRAME;
+        this.remoteFrame = INITIAL_FRAME;
+        this.syncFrame = INITIAL_FRAME;
+        this.remoteFrameAdvantage = 0;
+    	this.applyGameState(gameState);
     }
 
     restoreGameState(){
@@ -173,6 +314,8 @@ class Pong extends Phaser.Scene{
 
     simulateInputs(){
     	// gets the current player input and simulates the opponent input
+    	// can be improved upon by using more inputs from previous frames
+    	// to create a smarter algorithm to similate opponent inputs
     	this.currentInput.up = this.cursors.up.isDown;
 		this.currentInput.down = this.cursors.down.isDown;
     	if(this.gameStateContainer.has(this.localFrame)){
@@ -267,9 +410,48 @@ class Pong extends Phaser.Scene{
          	this.ballVector.y *= -1;
         } else if(leftBallVect < 0 || rightBallVect > 800){
          	// placeholder for debugging, unnessesary to finialized game
-         	this.ballVector.x *= -1;
+         	// this.ballVector.x *= -1;
         }
 
+        if(this.checkPlayerLost()){
+        	this.gameActive = false;
+    		this.resetGameState();
+    		this.gameStateContainer.clear();
+    		socket.emit('sendPlayerLoss');
+    		this.playerLoses();
+    		this.scoreTweenAnimate();
+        }
+
+    }
+
+    playerWins(){
+    	if(host){
+    		this.score.player1++;
+    	} else {
+    		this.score.player2++;
+    	}	
+    }
+
+    playerLoses(){
+    	if(host){
+    		this.score.player2++;
+    	} else {
+    		this.score.player1++;
+    	}	
+    }
+
+    checkPlayerLost(){
+    	if(host){
+    		if(this.ball.x <= 0){
+        		return true;
+	        } 
+	        return false;
+    	} 
+
+    	if(this.ball.x >= 800){
+    		return true;
+    	}
+    	return false;
     }
 
     storeGameState(){
