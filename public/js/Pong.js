@@ -4,7 +4,7 @@
  *		that should be added to make the game more polished to be published
  * 	Current to-dos:
  *		-Make a UI that shows the current player score constantly throughout the match
- *		-Make an animation that shows at the begininng of the game and when either player
+ *		-DONE: Make an animation that shows at the begininng of the game and when either player
  *		scores a point
  *		-Set up a system that determines when the game ends and also make the entire game
  *		able to backtrack to the title screen whenever the player wants to 

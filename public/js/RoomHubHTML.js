@@ -87,7 +87,6 @@ function setRoomHubHTML(html, state){
 				console.log('you cannot join a room with 2 players already');
 				// cannot join room with 2 people already
 			}
-			//socket.emit('console', `check active click: ${id}`);
 		}
 	});
 

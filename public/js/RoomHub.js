@@ -21,7 +21,6 @@ class RoomHub extends Phaser.Scene {
 		socket.emit('getRooms', (data) => {
 			socket.emit('console', data);
 			this.add.text(0, 0, data, {fontFamily:'Georgia, Times, serif', fontSize: 16});
-			//socket.emit('console', JSON.stringify(data));	
 		});
 
 		let htmlinput = this.add.dom(0, 0).createFromCache('text');
