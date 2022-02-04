@@ -42,7 +42,7 @@ class Pong extends Phaser.Scene{
     	// init world objects
         this.physics.world.setFPS(60);
 
-        this.gameActive = false;
+        this.gameActive = false; // stops update until the game is ready to initiate
         this.cursors = this.input.keyboard.createCursorKeys();
         
 		this.controllerPlayer;
@@ -65,6 +65,7 @@ class Pong extends Phaser.Scene{
         this.currentInput = {up: false, down: false};
         this.gameStateContainer = new GameStateContainer();
 
+        // set up objects for animation for the beginning of each round
         this.score1Text = this.add.text(
             config.width / 2 - 200, 
             config.height / 2, 
@@ -138,7 +139,6 @@ class Pong extends Phaser.Scene{
         	this.resetGameState();
     		this.gameStateContainer.clear();
     		this.playerWins();
-    		console.log(this.score);
     		this.scoreTweenAnimate();
         });
 
@@ -149,9 +149,8 @@ class Pong extends Phaser.Scene{
 
     scoreTweenAnimate(){
     	console.log('called tween animation');
-    	let _this = this; // to reference this class inside the tween object
+    	//let _this = this; // to reference this class inside the tween object
     	this.score1Text.setText(`${this.score.player1}`);
-    	console.log(this.score1Text.x);
     	this.score2Text.setText(`${this.score.player2}`);
 		this.score1Text.alpha = 1.0;
 		this.score2Text.alpha = 1.0;
@@ -161,53 +160,62 @@ class Pong extends Phaser.Scene{
 	    const origX2 = this.score2Text.x;
 	    const hypotenuse1 = this.score1Text.x - config.width/2;
 	    const hypotenuse2 = this.score2Text.x - config.width/2;
-	    let spinTween = this.tweens.addCounter({
+
+
+	    const onUpdateFunction = (tween) => {
+	    	let angle = tween.getValue() * (180 / Math.PI);
+	    	this.score1Text.angle = angle;
+	    	this.score2Text.angle = angle;
+	    	this.dashText.angle = angle * -1;
+	    	let adjacent = hypotenuse1 * Math.cos(tween.getValue());
+            let opposite = hypotenuse1 * Math.sin(tween.getValue());
+            this.score1Text.x = config.width/2 + adjacent;
+            this.score1Text.y = config.height/2 + opposite;
+            adjacent = hypotenuse2 * Math.cos(tween.getValue());
+            opposite = hypotenuse2 * Math.sin(tween.getValue());
+            this.score2Text.x = config.width/2 + adjacent;
+            this.score2Text.y = config.height/2 + opposite;
+	    };
+
+	    const onCompleteSecond = () => {
+	    	this.score1Text.angle = 0;
+			this.score1Text.x = origX1;
+            this.score2Text.angle = 0;
+            this.score2Text.x = origX2;
+            this.dashText.angle = 0;
+        	this.goText.alpha = 1.0;
+			this.tweens.add({
+				targets: this.goText,
+				alpha: 0.0,
+				delay: 300,
+				duration: 200,
+				repeat: 0,
+				onComplete: () => {socket.emit('initiateGame');}
+			});// End tween goText alpha
+	    };
+
+	    const onCompleteFirst = () => {
+	    	this.tweens.add({
+        		targets: [this.score1Text, this.score2Text, this.dashText],
+        		alpha: 0.0,
+        		duration: 200,
+        		repeat: 0,
+        		onComplete: onCompleteSecond
+	        });// End tween scoreText alpha
+	    };
+
+	    // probably should initaite the onUpdate and onComplete functions outside the tween
+	    // that case I don't need to use _this to refer to the Pong class
+	    this.tweens.addCounter({
 	        from: 0,
 	        to: 4 * Math.PI,
 	        repeat: 0,
 	       	ease: 'Quart.easeInOut',
-	        onUpdate: (tween) => {
-	            //  tween.getValue = range between 0 and 360
-	            let angle = tween.getValue() * (180 / Math.PI);
-	            _this.score1Text.angle = angle;
-	            _this.score2Text.angle = angle;
-	            _this.dashText.angle = angle * -1;
-	            let adjacent = hypotenuse1 * Math.cos(tween.getValue());
-	            let opposite = hypotenuse1 * Math.sin(tween.getValue());
-	            _this.score1Text.x = config.width/2 + adjacent;
-	            _this.score1Text.y = config.height/2 + opposite;
-	            adjacent = hypotenuse2 * Math.cos(tween.getValue());
-	            opposite = hypotenuse2 * Math.sin(tween.getValue());
-	            _this.score2Text.x = config.width/2 + adjacent;
-	            _this.score2Text.y = config.height/2 + opposite;
-	        },
-	        onComplete: () => {
-	        	let alphaTween = _this.tweens.add({
-	        		targets: [_this.score1Text, _this.score2Text, _this.dashText],
-	        		alpha: 0.0,
-	        		duration: 200,
-	        		repeat: 0,
-	        		onComplete: () => {
-	        			_this.score1Text.angle = 0;
-	        			_this.score1Text.x = origX1;
-			            _this.score2Text.angle = 0;
-			            _this.score2Text.x = origX2;
-			            _this.dashText.angle = 0;
-			        	_this.goText.alpha = 1.0;
-	        			_this.tweens.add({
-	        				targets: _this.goText,
-	        				alpha: 0.0,
-	        				delay: 300,
-	        				duration: 200,
-	        				repeat: 0,
-	        				onComplete: () => {socket.emit('initiateGame');}
-	        			});
-	        		}
-	        	});
-	        }
-    	});
+	        onUpdate: onUpdateFunction,
+	        onComplete: onCompleteFirst
+    	});// End tween counter
 
-    }
+    }// End scoreTweenAnimate()
 
     update(){
     	if(!this.gameActive)
@@ -271,7 +279,7 @@ class Pong extends Phaser.Scene{
 
 
     resetGameState(){
-    	let gameState = {
+    	let gameState = { // gamestate at first frame of the game
     		frame: INITIAL_FRAME,
     		playerInput: {up: false, down: false},
     		opponentInput: {up: false, down: false},
