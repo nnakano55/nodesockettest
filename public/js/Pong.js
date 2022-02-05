@@ -95,6 +95,14 @@ class Pong extends Phaser.Scene{
         ).setOrigin(0.5);
         this.goText.alpha = 0.0;
 
+        this.gameText = this.add.text(
+        	config.width / 2,
+        	config.height / 2,
+        	'GAME',
+        	{fill:'#FFFFFF', fontSize: '200px', fontFamily:'Arial'}
+        ).setOrigin(0.5);
+        this.gameText.alpha = 0.0;
+
         // check which side the player will control
 		if(host){
 			this.controllerPlayer = this.player1;
@@ -148,8 +156,8 @@ class Pong extends Phaser.Scene{
     }
 
     scoreTweenAnimate(){
-    	console.log('called tween animation');
-    	//let _this = this; // to reference this class inside the tween object
+    	// add logic to determine if he game continues or ends
+
     	this.score1Text.setText(`${this.score.player1}`);
     	this.score2Text.setText(`${this.score.player2}`);
 		this.score1Text.alpha = 1.0;
@@ -161,6 +169,14 @@ class Pong extends Phaser.Scene{
 	    const hypotenuse1 = this.score1Text.x - config.width/2;
 	    const hypotenuse2 = this.score2Text.x - config.width/2;
 
+
+	    const gameEndBool = this.score.player1 >= 11 || this.score.player2 >= 11;
+	 	const onEnd = gameEndBool ? () => {
+	 		console.log('gameEnd!');
+	 		this.scene.start('RoomHubScene');
+	 	} : () => {
+	 		socket.emit('initiateGame');
+	 	};
 
 	    const onUpdateFunction = (tween) => {
 	    	let angle = tween.getValue() * (180 / Math.PI);
@@ -183,14 +199,15 @@ class Pong extends Phaser.Scene{
             this.score2Text.angle = 0;
             this.score2Text.x = origX2;
             this.dashText.angle = 0;
-        	this.goText.alpha = 1.0;
+            let finalText = gameEndBool ? this.gameText : this.goText;
+        	finalText.alpha = 1.0;
 			this.tweens.add({
-				targets: this.goText,
+				targets: finalText,
 				alpha: 0.0,
 				delay: 300,
 				duration: 200,
 				repeat: 0,
-				onComplete: () => {socket.emit('initiateGame');}
+				onComplete: onEnd
 			});// End tween goText alpha
 	    };
 
