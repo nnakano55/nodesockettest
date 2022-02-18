@@ -6,7 +6,7 @@
  *		-Make a UI that shows the current player score constantly throughout the match
  *		-DONE: Make an animation that shows at the begininng of the game and when either player
  *		scores a point
- *		-Set up a system that determines when the game ends and also make the entire game
+ *		-DONE: Set up a system that determines when the game ends and also make the entire game
  *		able to backtrack to the title screen whenever the player wants to 
  * 		-Replace portions of the code(the imported frameworks) with their respected cloud
  * 		URL
@@ -17,7 +17,7 @@
  *		-Make the gamestate information more compact?
  *			* create a function that converts gameStateContainer into a more compact data structure
  *			* create a funciton that converts the compact data into gameStateContainer
- * 
+ *      -Make an AI for single player mode
  */
 
 
@@ -38,11 +38,14 @@ class Pong extends Phaser.Scene{
         
     }
 
+    // create separate multiplayer and single player declaration functions
     create(){
     	// init world objects
         this.physics.world.setFPS(60);
 
+        // this needs to change depending on singleplayer vs multiplayer
         this.gameActive = false; // stops update until the game is ready to initiate
+        
         this.cursors = this.input.keyboard.createCursorKeys();
         
 		this.controllerPlayer;
@@ -74,7 +77,6 @@ class Pong extends Phaser.Scene{
         );
         this.score1Text.setOrigin(0.5);
         this.score1Text.alpha = 0.0;
-        console.log(this.score1Text.x);
 
     	this.score2Text = this.add.text(
             config.width / 2 + 200, 
@@ -84,7 +86,12 @@ class Pong extends Phaser.Scene{
         ).setOrigin(0.5);
     	this.score2Text.alpha = 0.0;
 
-    	this.dashText = this.add.rectangle(config.width / 2, config.height / 2, 120, 25, 0xffffff);
+    	this.dashText = this.add.rectangle(
+            config.width / 2, 
+            config.height / 2, 120, 
+            25, 
+            0xffffff
+        );
     	this.dashText.alpha = 0.0;
 
     	this.goText = this.add.text(
@@ -112,51 +119,55 @@ class Pong extends Phaser.Scene{
 			this.opponentPlayer = this.player1;
 		}
 
-		// init socket emitters
-		socket.on('gameStart', (data) => {
+		this.initSockets();
 
-        	console.log('startGamecalled');
-			let dataObj = JSON.parse(data);
+        this.update = this.updateOnline;
 
-			this.ballVector.x = dataObj.velocityX > 0 ? this.ballSpeed : -1 * this.ballSpeed;
-			this.ballVector.y = dataObj.velocityY > 0 ? this.ballSpeed : -1 * this.ballSpeed;
-			this.gameActive = true;
+   		this.scoreTweenAnimate();
+    	
+    }// End create()
+
+    initSockets(){
+        // init socket emitters, this can be all in one method
+        socket.on('gameStart', (data) => {
+
+            let dataObj = JSON.parse(data);
+
+            this.ballVector.x = dataObj.velocityX > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+            this.ballVector.y = dataObj.velocityY > 0 ? this.ballSpeed : -1 * this.ballSpeed;
+            this.gameActive = true;
         });
 
-		socket.on('disconnected', () => {
-			socket.emit('leaveRoom', () => {
-				this.scene.start('SceneMain');	
-			});
-		});
+        socket.on('disconnected', () => {
+            socket.emit('leaveRoom', () => {
+                this.scene.start('SceneMain');  
+            });
+        });
 
         socket.on('getRollbackData', (d) => {
-        	let data = JSON.parse(d);
-        	this.remoteFrame = data.frame;
-        	this.remoteFrameAdvantage = data.advantage;
+            let data = JSON.parse(d);
+            this.remoteFrame = data.frame;
+            this.remoteFrameAdvantage = data.advantage;
 
-        	this.gameStateContainer.checkOpponentInfo(data.frame, {
-        		up: data.up,
-        		down: data.down
-        	});
+            this.gameStateContainer.checkOpponentInfo(data.frame, {
+                up: data.up,
+                down: data.down
+            });
 
         });
 
         socket.on('getOpponentLoss', () => {
-        	// [update score]
-        	this.gameActive = false;
-        	this.resetGameState();
-    		this.gameStateContainer.clear();
-    		this.playerWins();
-    		this.scoreTweenAnimate();
+            // [update score]
+            this.gameActive = false;
+            this.resetGameState();
+            this.gameStateContainer.clear();
+            this.playerWins();
+            this.scoreTweenAnimate();
         });
 
-   		// stop scene until the game is properly initiated
-   		this.scoreTweenAnimate();
-    	
     }
 
     scoreTweenAnimate(){
-    	// add logic to determine if he game continues or ends
 
     	this.score1Text.setText(`${this.score.player1}`);
     	this.score2Text.setText(`${this.score.player2}`);
@@ -169,14 +180,13 @@ class Pong extends Phaser.Scene{
 	    const hypotenuse1 = this.score1Text.x - config.width/2;
 	    const hypotenuse2 = this.score2Text.x - config.width/2;
 
-
 	    const gameEndBool = this.score.player1 >= 11 || this.score.player2 >= 11;
+	 	
 	 	const onEnd = gameEndBool ? () => {
-	 		console.log('gameEnd!');
-	 		this.scene.start('RoomHubScene');
-	 	} : () => {
-	 		socket.emit('initiateGame');
-	 	};
+		 		this.scene.start('RoomHubScene');
+	 		} : () => {
+	 			socket.emit('initiateGame');
+	 		};
 
 	    const onUpdateFunction = (tween) => {
 	    	let angle = tween.getValue() * (180 / Math.PI);
@@ -234,11 +244,18 @@ class Pong extends Phaser.Scene{
 
     }// End scoreTweenAnimate()
 
-    update(){
+    updateOffline(){
+        this.currentInput = {up: this.cursors.up.isDown, down: this.cursors.down.isDown};
+        this.opponentAI();
+        this.updateGame();
+    }
+
+    updateOnline(){
+
     	if(!this.gameActive)
     		return;
-    	console.log(this.localFrame);
-		// Update Network Variables
+
+    	// Update Network Variables
 		let updateRemoteFrame = this.remoteFrame;
 		let updateRemoteFrameAdvantage = this.remoteFrameAdvantage;
 		this.currentInput = {up: this.cursors.up.isDown, down: this.cursors.down.isDown};
@@ -268,7 +285,6 @@ class Pong extends Phaser.Scene{
         	// it said do this on the pseudo code but that is a lie 
         	//this.updateGame(); // don't do this, I don't know why the pseudocode wants me to do this
         	this.storeGameState();
-        	console.log('rollback!');
         } 
 
 		//[time synced]
@@ -288,7 +304,7 @@ class Pong extends Phaser.Scene{
 			this.storeGameState();
 		}
 		
-    }
+    }// End update()
 
     getRandomVelocity(orig){
 		return Math.floor(Math.random() * 2) === 0 ? orig : orig * -1;
@@ -354,6 +370,10 @@ class Pong extends Phaser.Scene{
     	}
     }
 
+    opponentAI(){
+
+    }
+
     updateGame(){
     	// needs to check if the game is updated after the rollback or
     	// just a regular update when the time is synced ?
@@ -364,7 +384,6 @@ class Pong extends Phaser.Scene{
             this.controllerPlayer.y += 10;
         }
 
-        //console.log(this.opponentInput);
         if(this.opponentInput.up && this.opponentPlayer.y > 50){
         	this.opponentPlayer.y += -10;
         }

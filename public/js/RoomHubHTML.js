@@ -4,6 +4,7 @@ function setRoomHubHTML(html, state){
 	let menu = html.getChildByID('menu');
 	let findRoomMenu = menu.children.findRoomMenu;
 	let createRoomMenu = menu.children.createRoomMenu;
+	let backToTitle = menu.children.backToTitle;
 
 	let contents = html.getChildByID('contents');
 	let createRoom = contents.querySelector('#createRoom');
@@ -65,11 +66,16 @@ function setRoomHubHTML(html, state){
 		createRoom.style.display = 'flex';
 		findRoom.style.display = 'none';
 	});
+
+	backToTitle.addEventListener('click', () => {
+		state.scene.start('SceneMain');
+	});
 	
 	roomJoin.addEventListener('click', () => {
 		let active = roomTable.querySelector('.active');
 		if(active){
 			console.log(active.children[1].innerText);
+			// this is bad, don't do this. make sure the playerIDs are found in a much better way
 			let id = active.children[1].innerHTML.match(/(?<=id:\s)[a-zA-Z0-9]+/g)[0];
 			let players = active.children[2].innerHTML.match(/(?<=Players:\s)\d/g)[0];
 			console.log(players);
